@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="copieTuto.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
+        integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body>
+    <nav id="nav">
+        <div style="display: flex;">
+            <img src="image/monlogo.png" alt="" height="80">
+            <a href="#" class="nameApp"><span class="titre">EDU</span>CONNECT</a>
+        </div>
+        <ul>
+            <li>
+                <a href="#acceuil">acceuil</a>
+            </li>
+            <li>
+                <a href="admisGroup.html">admis</a>
+            </li>
+            <li>
+                <a href="#liste1" id="supp">supprimer</a>
+            </li>
+            <li>
+                <a href="#">modifier</a>
+            </li>
+
+        </ul>
+        <div id="icons"></div>
+    </nav>
+    <section class="section1" id="acceuil">
+        <div class="arriere"></div>
+        <div class="texteContainer">
+            <h1 class="politesse"><span class="color">EDU</span>CONNECT</h1>
+        </div>
+        <div class="position1">
+            <button class="btn1"><a href="affiche.html" onclick="getEtudiants()">afficher</a></button>
+            <button class="btn2"><a href="#inscrire">ajouter</a></button>
+            <button class="btn3"><a href="#">Modifier</a></button>
+        </div>
+    </section>
+   
+    <article class="container1" id="inscrire">
+        <h3 class="titre2 insc" id="liste">Inscription</h3>
+        <form action="" class="section2" id="enregistrement">
+            <ul>
+                <div class="bloc2">
+                    <div>
+                        <li><span class="error" id="nom1">veuillez remplir le champ</span></li>
+                        <li><input type="text" placeholder="nom" id="nom"></li>
+                    </div>
+                    <div>
+                         <li><span class="error" id="prenom1">veuillez remplir le champ</span></li>
+                        <li> <input type="text" placeholder="prenom" id="prenom"></li>
+                    </div>
+                </div>
+                <div class="bloc2">
+                    <div>
+                         <li><span class="error" id="email1">veuillez remplir le champ</span></li>
+                        <li><input type="email" placeholder="email" id="email"></li>
+                    </div>
+                    <div>
+                         <li><span class="error" id="file">veuillez remplir le champ</span></li>
+                        <select name="classe" id="filiere">
+                            <!-- <option selected disabled>choisir un champ</option> -->
+                            <option value="terminal D">terminal D</option>
+                            <option value="terminal C">terminal C</option>
+                            <option value="terminal A">terminal A</option>
+                            <option value="premiere D">premiere D</option>
+                            <option value="premiere C">premiere C</option>
+                            <option value="premiere A">premiere A</option>
+                            <option value="seconde A">seconde A</option>
+                            <option value="seconde C">seconde C</option>
+                            <option value="troisieme all">troisieme all</option>
+                            <option value="troisieme esp">troisieme esp</option>
+                            <option value="quatrieme esp">quatrieme esp</option>
+                            <option value="qautrime all">qautrime all</option>
+                            <option value="cinquieme ">cinquieme </option>
+                            <option value="sixieme">sixieme</option>
+                        </select>
+
+                    </div>
+
+                </div>
+                <div class="commantaire">
+                    <textarea name="commantaire" id="commantaire" placeholder="votre motivation"></textarea>
+                </div>
+
+
+                </li>
+            </ul>
+            <!-- <input type="submit" value="Soumettre" class="taille"> -->
+            <input type="submit" value="annuler"  class="taille">
+            <input type="submit" value="deconnexion"  class="taille">
+
+        </form>
+    </article>
+    <footer>
+        <div class="page">
+            <i class="fa-brands fa-whatsapp"></i><a href="#"></a>
+            <i class="fa-brands fa-facebook faceb"></i><a href="#"></a>
+            <i class="fa-brands fa-github"></i><a href="#"></a>
+        </div>
+    </footer>
+    <script src="script.js"></script>
+</body>
+
+</html>

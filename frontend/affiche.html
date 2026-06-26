@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .flex{
+            display: flex;
+            list-style: none;
+            justify-content: space-around;
+            width: 70rem;
+            margin: auto;
+            background-color: #eef2f7;
+            padding: 15px 0;
+            gap: 30px;
+           
+        }
+        .contentParent{
+            background-color: #2c3e50;
+            /* color: white; */
+            /* padding-bottom:4rem;
+            padding-top: 4rem; */
+           
+        }
+        .flex li , .color li {
+            width: 10rem;
+            text-align: center;
+        }
+        .color{
+             display: flex;
+            list-style: none;
+            justify-content: space-around;
+            width: 70rem;
+            margin: auto;
+            background-color: #dbe4ee;
+            padding: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="contentParent">
+        <ul class="flex">
+            <li>lundi</li>
+            <li>mardi</li>
+            <li>mercredi</li>
+            <li>jeudi</li>
+            <li>vendredi</li>
+        </ul>
+    </div>
+
+    <script src="affiche.js"></script>
+</body>
+</html>
