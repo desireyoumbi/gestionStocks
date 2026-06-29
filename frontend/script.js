@@ -24,7 +24,11 @@ enregistrement.addEventListener("submit" , async (e)=>{
     // deconnexion()
     // modifier(nom,prenom,email,select,email)
     // delete_user()
-    show_user()
+    // show_user()
+    // insere_produit(nom)
+    // show_product()
+    // delete_product()
+    modifier_produit(nom,prenom,email,select,email)
  })
 
 
@@ -121,6 +125,68 @@ async function deconnexion() {
   const reponse_deconnexion = await fetch(`${API_URL}/logout.php`)
   const resultat_deconnexion = await reponse_deconnexion.json();
   console.log(resultat_deconnexion.message);    
+}
+
+// produits
+async function insere_produit(nom) {
+    const reponse_insere_produit = await fetch(`${API_URL}/produit.php`,{
+        "method": "POST",
+        headers: {"Content-Type" : "application/json"},
+        body : JSON.stringify({
+            nom:nom,
+            quantite:20,
+            prix_unitaire:1000,
+            seuil_alert:12,
+            categorie:1
+        })
+    })
+    const resultat_insere = await reponse_insere_produit.json()
+    console.log(resultat_insere)
+}
+
+
+async function show_product() {
+    const reponse_show_product = await fetch(`${API_URL}/produit.php`,{
+        "method": "GET"
+    })
+
+    const resultat_show_product = await reponse_show_product.json();
+    console.log(resultat_show_product)
+    
+}
+
+async function delete_product() {
+    const reponse_delete = await fetch(`${API_URL}/produit.php`,{
+        "method": "DELETE",
+        headers: {"Content-Type" : "application/json"},
+        body: JSON.stringify({
+            id:2
+        })
+    })
+
+    const resultat_delete = await reponse_delete.json();
+    console.log(resultat_delete)
+}
+
+async function modifier_produit(nom,prenom,email,password,email) {
+    reponse_modifier = await fetch(`${API_URL}/produit.php`,{
+        "method": "PUT",
+        headers: {"Content-Type" : "application/json"},
+        body: JSON.stringify({
+            id:1,
+            nom:nom,
+            quantite:prenom,
+            prix_unitaire:prenom,
+            seuil_alert:prenom,
+            id_categorie:4
+        })
+    }
+
+    )
+
+    const resultat_modification = await reponse_modifier.json()
+    console.log(resultat_modification)
+    
 }
 
 // async function getEtudiants(){

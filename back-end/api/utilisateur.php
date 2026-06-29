@@ -1,5 +1,6 @@
 <?php
 
+// permet d'afficher exactement l'erreur au niveau de la console
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -201,7 +202,7 @@ else if ($_SERVER["REQUEST_METHOD"] == "DELETE") {
 // afficher les information d'un utilisateur
 
 else if ($_SERVER["REQUEST_METHOD"] == "GET") {
-    $request1 ="SELECT * FROM utilisateurs";
+    $request1 ="SELECT * FROM utilisateurs  WHERE status = 0";
 
     if($request1){
         $result_request = $connect->query($request1);
