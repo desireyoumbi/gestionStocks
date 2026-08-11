@@ -19,4 +19,16 @@ class Purchase_order extends Model
     public function movements(){
         return $this->belongsTo(Movement::class);
     }
+
+    public function products(){
+        return $this->hasMany(Product::class);
+    }
+
+    public function users(){
+        return $this->belongsTo(User::class);
+    }
+
+    public function suppliers(){
+        return $this->belongsTo(Supplier::class);
+    }
 }

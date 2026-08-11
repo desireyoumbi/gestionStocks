@@ -22,6 +22,14 @@ class Product extends Model
         'updated_by'
     ];
 
+    public $casts = [
+        'update_by' => 'interger',
+        'quantity' => 'integer',
+        'alert_threshold' => 'integer',
+        'purchase_price' =>'decimal',
+        'selling_price' => 'decimal'
+    ];
+
     //relation avec les tables
      public function movements(){
         return $this->hasMany(Movement::class);

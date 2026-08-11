@@ -18,6 +18,11 @@ class Movement extends Model
         'update_by'
     ];
 
+    public $casts = [
+        'update_by' => 'integer',
+        'date' => 'datetime'
+    ];
+
     public function users(){
         return $this->hasMany(User::class);
     }

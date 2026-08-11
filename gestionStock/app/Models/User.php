@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Psy\Completion\FuzzyMatcher;
 
 class User extends Authenticatable
 {
@@ -42,4 +43,23 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+    public function categories(){
+        return $this->hasMany(Category::class);
+    }
+
+    public function movement(){
+        return $this->belongsTo(Movement::class);
+    }
+
+    public function products(){
+        return $this->hasMany(Product::class);
+    }
+
+    public function suppliers(){
+        return $this->hasMany(Supplier::class);
+    }
+
+    public function purchase_order(){
+        return $this->hasMany(Purchase_order::class);
+    }
 }

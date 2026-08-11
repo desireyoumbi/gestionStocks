@@ -14,4 +14,9 @@ class Purchase_order_product extends Model
         'qty',
         'total_price'
     ];
+
+    public $casts = [
+        'qty' => 'integer',
+        'total_price' => 'decimal'
+    ];
 }

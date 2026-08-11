@@ -16,8 +16,17 @@ class Supplier extends Model
         'users_id',
         'updated_by',
     ];
+
+    public $casts = [
+        'update_by' => 'integer'
+    ];
+    
     public function users(){
         return $this->belongsTo(User::class);
 
+    }
+
+    public function purchase_order(){
+        return $this->hasMany(Purchase_order::class);
     }
 }

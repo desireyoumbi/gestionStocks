@@ -16,7 +16,7 @@ class Movement_product extends Model
     ];
 
     public $casts = [
-        'qty' => 'interger'
+        'qty' => 'integer'
     ];
 
     
