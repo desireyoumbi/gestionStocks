@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Svix\Webhook;
 use Svix\Exception\WebhookVerificationException;
@@ -29,26 +30,58 @@ class ClerkWebhookController extends Controller
         $eventType = $payload['type'];
         $userData = $payload['data'];
 
-        if ($eventType === 'user.created') {
-            User::create([
-                'clerk_id' => $userData['id'],
-                'email' => $userData['email_addresses'][0]['email_address'],
-                'name' => trim($userData['first_name'] . ' ' . $userData['last_name']),
-                'role' => 'vendeur',
-            ]);
-        }
+        //appeller les methodes correspondandes
 
-        if ($eventType === 'user.updated') {
-            User::where('clerk_id', $userData['id'])->update([
-                'email' => $userData['email_addresses'][0]['email_address'],
-                'name' => trim($userData['first_name'] . ' ' . $userData['last_name']),
-            ]);
-        }
+        return match ($eventType) {
+            'user.created' => $this->createUser($userData),
+            default => response()->json(['status' => 'ignored']),
+        };
 
-        if ($eventType === 'user.deleted') {
-            User::where('clerk_id', $userData['id'])->delete();
-        }
-
-        return response()->json(['status' => 'ok']);
+    
     }
+
+    //creation d'un user
+
+    private function createUser(array $userData){
+        //transformer les infos envoyer par clerk plus comprehenssible
+
+        $data = [
+            'clerk_id' => $userData['id'] ?? null,
+            'email' => $userData['email_addresses'][0]['email_address'] ?? null,
+            'name' => trim(($userData['first_name'] ?? ''). '' . ($userData['last_name'] ?? '')),
+            'phone' => $userData['private_metadata']['phone'] ?? null,
+            'role' => $userData['private_metadata']['role'] ?? 'vendeur',
+        ];
+
+        // validation cote laravel
+        $validator = Validator::make($data , [
+            'clerk_id' => 'required|string|unique:users,clerk_id',
+            'email' => 'required|email|unique:users,email',
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20|unique:users,phone',
+            'role' =>  'required|in:administrateur,vice_administrateur,vendeur'
+        ]);
+
+
+        // sa ne respecte pas les regles des tables
+        if($validator->fails()){
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        //valide les champ
+        $validated = $validator->validated();
+
+        // creation du user en db
+        User::create($validated);
+        // reponse vers le frontend
+        return response()->json(['success' => true]);
+
+
+    }
+
+    
+
 }

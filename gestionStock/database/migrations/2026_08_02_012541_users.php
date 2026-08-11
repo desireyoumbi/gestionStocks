@@ -15,12 +15,11 @@ return new class extends Migration
             $table->id();
             $table->string('clerk_id')->unique();
             $table->string('name' , 255);
-            $table->string('phone' , 100)->nullable();
-            $table->string('email')->unique();
-            $table->enum('statuts',['actifs' , 'passif']);
-            $table->enum('role',['admin' ,'viceAdmin' , 'vendeur'])->default('vendeur');
-            $table->rememberToken();
+            $table->string('phone' , 100)->unique();
+            $table->string('email')->unique()->nullable();
+            $table->enum('role',['administrateur' ,'vice_administrateur' , 'vendeur'])->default('vendeur');
             $table->timestamps();
+            $table->softDeletes();
 
         });
     }
@@ -30,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('users');
     }
 };
