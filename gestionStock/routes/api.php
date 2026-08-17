@@ -15,20 +15,7 @@ use App\Http\Controllers\ClerkWebhookController;
 |
 */
 
-Route::post('/webhooks/clerk', [ClerkWebhookController::class, 'handle']);
 
-
-Route::middleware('clerk.auth')->get('/test-clerk', function (Request $request) {
-    return response()->json([
-        'message' => 'Authentification réussie !',
-        'user' => $request->attributes->get('current_user'),
-    ]);
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
 });
-// Route::middleware('clerk.auth')->group(function () {
-//     Route::apiResource('produits', ProduitController::class);
-//     Route::apiResource('stocks', StockController::class);
-// });
-
-// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-//     return $request->user();
-// });
