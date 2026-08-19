@@ -4,32 +4,50 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Movement extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'boutique_id',
         'type',
         'date',
         'motif',
         'user_id',
         'purchase_order_id',
-        'update_by'
+        'updated_by',
     ];
 
-    public $casts = [
-        'update_by' => 'integer',
-        'date' => 'datetime'
+    protected $casts = [
+        'date' => 'date',
     ];
 
-    public function users(){
-        return $this->hasMany(User::class);
+    public function boutique()
+    {
+        return $this->belongsTo(Boutique::class);
     }
-    public function purchase_orders(){
-        return $this->belongsTo(Purchase_order::class);
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
-    public function products(){
-        return $this->hasMany(Product::class);
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'movement_products')
+                    ->withPivot('qty')
+                    ->withTimestamps();
     }
 }

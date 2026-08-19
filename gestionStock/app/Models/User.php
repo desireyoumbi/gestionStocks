@@ -2,55 +2,58 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @property string $role
+ * @method bool isManager()
+ * @method bool isAdmin()
+ */
+
+
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
         'phone',
+        'statuts',
         'role',
+        'boutique_id',
+        'doit_changer_mdp',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
-        'clerk_id',
+        'password',
+        'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'doit_changer_mdp' => 'boolean',
+        'password' => 'hashed',
     ];
+
+    public function boutique()
+    {
+        return $this->belongsTo(Boutique::class);
+    }
 
     public function categories()
     {
         return $this->hasMany(Category::class);
     }
 
-    public function movement()
+    public function movements()
     {
-        return $this->belongsTo(Movement::class);
+        return $this->hasMany(Movement::class);
     }
 
     public function products()
@@ -63,8 +66,24 @@ class User extends Authenticatable
         return $this->hasMany(Supplier::class);
     }
 
-    public function purchase_order()
+    public function purchaseOrders()
     {
-        return $this->hasMany(Purchase_order::class);
+        return $this->hasMany(PurchaseOrder::class);
+    }
+
+    /**
+     * Vérifie si l'utilisateur est un Administrateur ou un Vice-Administrateur.
+     */
+    public function isManager()
+    {
+        return in_array($this->role, ['administrateur', 'vice_administrateur']);
+    }
+
+    /**
+     * Vérifie si l'utilisateur est un Administrateur principal.
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'administrateur';
     }
 }

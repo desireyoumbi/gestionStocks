@@ -6,27 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('movements' , function(Blueprint $table){
+        Schema::create('movements', function (Blueprint $table) {
             $table->id();
-            $table->enum('type',['Entree' , 'Sorti' , 'Ajustement']);
+            $table->foreignId('boutique_id')->constrained()->cascadeOnDelete();
+            $table->enum('type', ['entree', 'sortie', 'ajustement']);
             $table->date('date');
             $table->string('motif')->nullable();
-            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('restrict');
-            $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders')->onDelete('set null');
-            $table->unsignedBigInteger('update_by')->nullable();
+            $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
+            $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('movements');

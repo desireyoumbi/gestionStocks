@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -16,32 +17,52 @@ class Product extends Model
         'purchase_price',
         'alert_threshold',
         'quantity',
-        'photo_lieu',
         'category_id',
         'user_id',
-        'updated_by'
+        'updated_by',
+        'boutique_id',
+        'status',
+        'description',
     ];
 
-    public $casts = [
-        'update_by' => 'interger',
+    protected $casts = [
         'quantity' => 'integer',
         'alert_threshold' => 'integer',
-        'purchase_price' =>'decimal',
-        'selling_price' => 'decimal'
+        'purchase_price' => 'decimal:2',
+        'selling_price' => 'decimal:2',
     ];
 
-    //relation avec les tables
-     public function movements(){
-        return $this->hasMany(Movement::class);
-     }
+    public function boutique()
+    {
+        return $this->belongsTo(Boutique::class);
+    }
 
-     public function categories(){
-        return $this->hasMany(Category::class);
-     }
-     public function users(){
-        return $this->hasMany(User::class);
-     }
-     public function purchase_orders(){
-        return $this->hasMany(Purchase_order::class);
-     }
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function movements()
+    {
+        return $this->belongsToMany(Movement::class, 'movement_products')
+                    ->withPivot('qty')
+                    ->withTimestamps();
+    }
+
+    public function purchaseOrders()
+    {
+        return $this->belongsToMany(PurchaseOrder::class, 'purchase_order_products')
+                    ->withPivot('qty', 'unit_price')
+                    ->withTimestamps();
+    }
 }

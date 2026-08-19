@@ -14,11 +14,14 @@ return new class extends Migration
         Schema::create('suppliers' , function(Blueprint $table){
             $table->id();
             $table->string('name');
-            $table->string('phone')->unique();
-            $table->string('email')->unique()->nullable();
-            $table->text('addresse')->nullable();
-            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('restrict');
-            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->string('phone');
+            $table->string('email')->nullable();
+            $table->text('adresse')->nullable();
+            $table->foreignId('boutique_id')->constrained()->cascadeOnDelete();
+            $table->unique(['boutique_id', 'phone']);
+            $table->unique(['boutique_id', 'email']);
+            $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });

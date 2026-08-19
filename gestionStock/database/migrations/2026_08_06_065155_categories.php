@@ -15,10 +15,10 @@ return new class extends Migration
             $table->id();
             $table->string('name' , 255);
             $table->text('description')->nullable();
-
+            $table->foreignId('boutique_id')->constrained()->cascadeOnDelete();
             // cle primaire de users
             $table->foreignId('user_id')->constrained('users')->onDelete('restrict');
-            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -29,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('suppliers');
+        Schema::dropIfExists('categories');
     }
 };
