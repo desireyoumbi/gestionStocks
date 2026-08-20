@@ -95,9 +95,12 @@
         <!-- Actions -->
         @if(Auth::user()->role !== 'vendeur' && $purchaseOrder->status === 'en_attente')
         <div class="flex items-center flex-wrap gap-3 pt-4 border-t border-slate-100">
+            
+            <!-- Formulaire corrigé avec @method('PATCH') -->
             <form method="POST" action="{{ route('purchase_orders.receive', $purchaseOrder) }}"
-                  onsubmit="return confirm('Confirmer la réception ? Le stock sera mis à jour.');">
+                  onsubmit="return confirm('Confirmer la réception ? Le stock sera mis à jour et un mouvement d\'entrée sera créé.');">
                 @csrf
+                @method('PATCH')
                 <button type="submit" class="bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-emerald-600 transition">
                     Valider la réception
                 </button>
@@ -111,6 +114,7 @@
             <form method="POST" action="{{ route('purchase_orders.cancel', $purchaseOrder) }}"
                   onsubmit="return confirm('Annuler cette commande ?');">
                 @csrf
+                @method('PATCH')
                 <button type="submit" class="bg-red-50 text-red-600 text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-red-100 transition">
                     Annuler la commande
                 </button>

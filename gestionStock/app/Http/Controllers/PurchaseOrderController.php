@@ -12,9 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseOrderController extends Controller
 {
-    /**
-     * Affiche la liste des commandes fournisseurs de la boutique connectée.
-     */
     public function index(Request $request)
     {
         $status = $request->input('status');
@@ -26,20 +23,15 @@ class PurchaseOrderController extends Controller
             $query->where('status', $status);
         }
 
-        $purchaseOrders = $query->latest()->paginate(10)->appends([
-            'status' => $status,
-        ]);
+        $purchaseOrders = $query->latest()->paginate(10)->appends(['status' => $status]);
 
         return view('purchase_orders.index', compact('purchaseOrders', 'status'));
     }
 
-    /**
-     * Affiche le formulaire de création d'une commande.
-     */
     public function create()
     {
         if (Auth::user()->role === 'vendeur') {
-            abort(403, "Vous n'êtes pas autorisé à créer une commande.");
+            abort(403, "Vous n'êtes pas autorisé à créer cet élément.");
         }
 
         $suppliers = Supplier::where('boutique_id', Auth::user()->boutique_id)->get();
@@ -48,13 +40,10 @@ class PurchaseOrderController extends Controller
         return view('purchase_orders.create', compact('suppliers', 'products'));
     }
 
-    /**
-     * Enregistre une nouvelle commande fournisseur, avec ses lignes de produits.
-     */
     public function store(Request $request)
     {
         if (Auth::user()->role === 'vendeur') {
-            abort(403, "Vous n'êtes pas autorisé à créer une commande.");
+            abort(403, "Vous n'êtes pas autorisé à effectuer cette action.");
         }
 
         $validated = $request->validate([
@@ -65,7 +54,6 @@ class PurchaseOrderController extends Controller
             'products.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        // Vérifie que le fournisseur choisi appartient bien à la boutique de l'utilisateur
         $supplier = Supplier::where('boutique_id', Auth::user()->boutique_id)
             ->findOrFail($validated['supplier_id']);
 
@@ -85,17 +73,13 @@ class PurchaseOrderController extends Controller
             }
         });
 
-        return redirect()->route('purchase_orders.index')
-                         ->with('success', 'Commande créée avec succès.');
+        return redirect()->route('purchase_orders.index')->with('success', 'Enregistré avec succès.');
     }
 
-    /**
-     * Affiche le détail d'une commande, avec ses produits.
-     */
     public function show(PurchaseOrder $purchaseOrder)
     {
         if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
-            abort(404, "Commande introuvable.");
+            abort(404, "Élément introuvable.");
         }
 
         $purchaseOrder->load(['supplier', 'user', 'products']);
@@ -103,184 +87,72 @@ class PurchaseOrderController extends Controller
         return view('purchase_orders.show', compact('purchaseOrder'));
     }
 
-    /**
-     * Affiche le formulaire de modification (uniquement si la commande est encore en attente).
-     */
-    public function edit(PurchaseOrder $purchaseOrder)
-    {
-        if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
-            abort(404, "Commande introuvable.");
-        }
-
-        if (Auth::user()->role === 'vendeur') {
-            abort(403, "Vous n'êtes pas autorisé à modifier cette commande.");
-        }
-
-        if ($purchaseOrder->status !== 'en_attente') {
-            return redirect()->route('purchase_orders.show', $purchaseOrder)
-                ->with('error', 'Seules les commandes en attente peuvent être modifiées.');
-        }
-
-        $suppliers = Supplier::where('boutique_id', Auth::user()->boutique_id)->get();
-        $products = Product::where('boutique_id', Auth::user()->boutique_id)->get();
-        $purchaseOrder->load('products');
-
-        return view('purchase_orders.edit', compact('purchaseOrder', 'suppliers', 'products'));
-    }
-
-    /**
-     * Met à jour une commande encore en attente (fournisseur et lignes de produits).
-     */
-    public function update(Request $request, PurchaseOrder $purchaseOrder)
-    {
-        if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
-            abort(404, "Commande introuvable.");
-        }
-
-        if (Auth::user()->role === 'vendeur') {
-            abort(403, "Vous n'êtes pas autorisé à modifier cette commande.");
-        }
-
-        if ($purchaseOrder->status !== 'en_attente') {
-            return redirect()->route('purchase_orders.show', $purchaseOrder)
-                ->with('error', 'Seules les commandes en attente peuvent être modifiées.');
-        }
-
-        $validated = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'products' => 'required|array|min:1',
-            'products.*.id' => 'required|exists:products,id',
-            'products.*.qty' => 'required|integer|min:1',
-            'products.*.unit_price' => 'required|numeric|min:0',
-        ]);
-
-        $supplier = Supplier::where('boutique_id', Auth::user()->boutique_id)
-            ->findOrFail($validated['supplier_id']);
-
-        DB::transaction(function () use ($validated, $supplier, $purchaseOrder) {
-            $purchaseOrder->update([
-                'supplier_id' => $supplier->id,
-                'updated_by' => Auth::id(),
-            ]);
-
-            // On resynchronise entièrement les lignes de produits
-            $syncData = [];
-            foreach ($validated['products'] as $line) {
-                $syncData[$line['id']] = [
-                    'qty' => $line['qty'],
-                    'unit_price' => $line['unit_price'],
-                ];
-            }
-            $purchaseOrder->products()->sync($syncData);
-        });
-
-        return redirect()->route('purchase_orders.show', $purchaseOrder)
-                         ->with('success', 'Commande mise à jour avec succès.');
-    }
-
-    /**
-     * Valide la réception d'une commande : crée le mouvement de stock associé
-     * et met à jour la quantité de chaque produit.
-     */
-    public function receive(PurchaseOrder $purchaseOrder)
-    {
-        if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
-            abort(404, "Commande introuvable.");
-        }
-
-        if (Auth::user()->role === 'vendeur') {
-            abort(403, "Vous n'êtes pas autorisé à valider une réception.");
-        }
-
-        if ($purchaseOrder->status !== 'en_attente') {
-            return redirect()->route('purchase_orders.show', $purchaseOrder)
-                ->with('error', 'Cette commande a déjà été traitée.');
-        }
-
-        DB::transaction(function () use ($purchaseOrder) {
-            $purchaseOrder->load('products');
-
-            $movement = Movement::create([
-                'boutique_id' => $purchaseOrder->boutique_id,
-                'type' => 'entree',
-                'date' => now(),
-                'motif' => 'Réception commande #' . $purchaseOrder->id,
-                'user_id' => Auth::id(),
-                'purchase_order_id' => $purchaseOrder->id,
-            ]);
-
-            foreach ($purchaseOrder->products as $product) {
-                $movement->products()->attach($product->id, [
-                    'qty' => $product->pivot->qty,
-                ]);
-
-                $product->increment('quantity', $product->pivot->qty);
-
-                // Repasse le produit en "disponible" si son stock était à 0
-                if ($product->status === 'rupture' && $product->quantity > 0) {
-                    $product->update(['status' => 'disponible']);
-                }
-            }
-
-            $purchaseOrder->update([
-                'status' => 'recue',
-                'updated_by' => Auth::id(),
-            ]);
-        });
-
-        return redirect()->route('purchase_orders.show', $purchaseOrder)
-                         ->with('success', 'Commande reçue, stock mis à jour.');
-    }
-
-    /**
-     * Annule une commande encore en attente.
-     */
-    public function cancel(PurchaseOrder $purchaseOrder)
-    {
-        if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
-            abort(404, "Commande introuvable.");
-        }
-
-        if (Auth::user()->role === 'vendeur') {
-            abort(403, "Vous n'êtes pas autorisé à annuler cette commande.");
-        }
-
-        if ($purchaseOrder->status !== 'en_attente') {
-            return redirect()->route('purchase_orders.show', $purchaseOrder)
-                ->with('error', 'Seules les commandes en attente peuvent être annulées.');
-        }
-
-        $purchaseOrder->update([
-            'status' => 'annulee',
-            'updated_by' => Auth::id(),
-        ]);
-
-        return redirect()->route('purchase_orders.index')
-                         ->with('success', 'Commande annulée.');
-    }
-
-    /**
-     * Supprime définitivement une commande (réservé aux administrateurs, uniquement si non reçue).
-     */
     public function destroy(PurchaseOrder $purchaseOrder)
     {
         if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
-            abort(404, "Commande introuvable.");
+            abort(404, "Élément introuvable.");
         }
 
         if (Auth::user()->role !== 'administrateur') {
-            abort(403, "Vous n'avez pas l'autorisation de supprimer cette commande.");
-        }
-
-        if ($purchaseOrder->status === 'recue') {
-            return redirect()->route('purchase_orders.show', $purchaseOrder)
-                ->with('error', 'Impossible de supprimer une commande déjà reçue.');
+            abort(403, "Action non autorisée.");
         }
 
         $purchaseOrder->products()->detach();
         $purchaseOrder->delete();
 
-        return redirect()->route('purchase_orders.index')
-                         ->with('success', 'Commande supprimée.');
+        return redirect()->route('purchase_orders.index')->with('success', 'Supprimé avec succès.');
+    }
+
+    /**
+     * Valide une commande fournisseur : génère le mouvement d'entrée et met à jour les stocks.
+     */
+    public function receive(PurchaseOrder $purchaseOrder)
+    {
+        // 1. Sécurités de base (Appartenance à la boutique et rôles)
+        if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
+            abort(404, "Commande introuvable.");
+        }
+
+        if (Auth::user()->role === 'vendeur') {
+            abort(403, "Vous n'êtes pas autorisé à valider cette commande.");
+        }
+
+        if ($purchaseOrder->status !== 'en_attente') {
+            return redirect()->back()->with('error', 'Cette commande a déjà été traitée.');
+        }
+
+        // 2. Transaction pour garantir l'intégrité
+        DB::transaction(function () use ($purchaseOrder) {
+            // Charger les produits liés via la table pivot
+            $purchaseOrder->load('products');
+
+            // Étape A : Créer le mouvement de stock d'entrée
+            $movement = Movement::create([
+                'boutique_id' => $purchaseOrder->boutique_id,
+                'type'        => 'entree',
+                'date'        => now(),
+                'motif'       => 'Validation commande fournisseur #' . $purchaseOrder->id,
+                'user_id'     => Auth::id(),
+            ]);
+
+            // Étape B : Parcourir les produits de la commande pour alimenter le mouvement et le stock
+            foreach ($purchaseOrder->products as $product) {
+                // Associer le produit au mouvement dans la table pivot des mouvements
+                $movement->products()->attach($product->id, [
+                    'qty' => $product->pivot->qty,
+                ]);
+
+                // Étape C : Mettre à jour le stock réel du produit (utilisation de 'quantity')
+                $product->increment('quantity', $product->pivot->qty);
+            }
+
+            // Étape D : Mettre à jour le statut de la commande
+            $purchaseOrder->update([
+                'status'     => 'recue',
+                'updated_by' => Auth::id(),
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Commande validée avec succès : le stock a été mis à jour et le mouvement d\'entrée a été généré.');
     }
 }

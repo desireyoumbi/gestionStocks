@@ -3,11 +3,15 @@
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\ForcedPasswordController;
+use App\Http\Controllers\BoutiqueSettingsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MovementController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
 
 /*
@@ -79,8 +83,30 @@ Route::middleware(['auth', 'check.password'])->group(function () {
     Route::get('/commandes/{purchaseOrder}/edit', [PurchaseOrderController::class, 'edit'])->name('purchase_orders.edit');
     Route::put('/commandes/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->name('purchase_orders.update');
     Route::delete('/commandes/{purchaseOrder}', [PurchaseOrderController::class, 'destroy'])->name('purchase_orders.destroy');
-    Route::post('/commandes/{purchaseOrder}/recevoir', [PurchaseOrderController::class, 'receive'])->name('purchase_orders.receive');
+    Route::patch('/commandes/{purchaseOrder}/recevoir', [PurchaseOrderController::class, 'receive'])->name('purchase_orders.receive');
     Route::post('/commandes/{purchaseOrder}/annuler', [PurchaseOrderController::class, 'cancel'])->name('purchase_orders.cancel');
+
+
+    //mouvements 
+    // Liste des mouvements (avec recherche et filtres)
+    Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');
+    // Formulaire de création d'un mouvement
+    Route::get('/movements/create', [MovementController::class, 'create'])->name('movements.create');
+    // Enregistrement du nouveau mouvement
+    Route::post('/movements', [MovementController::class, 'store'])->name('movements.store');
+    // Affichage des détails d'un mouvement spécifique
+    Route::get('/movements/{movement}', [MovementController::class, 'show'])->name('movements.show');
+    // Formulaire d'édition (modification du motif/date)
+    Route::get('/movements/{movement}/edit', [MovementController::class, 'edit'])->name('movements.edit');
+    // Mise à jour du mouvement
+    Route::put('/movements/{movement}', [MovementController::class, 'update'])->name('movements.update');
+    // Suppression / Annulation d'un mouvement (avec réajustement du stock)
+    Route::delete('/movements/{movement}', [MovementController::class, 'destroy'])->name('movements.destroy');
+
+    //restaurer ou supprimer 
+    Route::get('/corbeille', [TrashController::class, 'index'])->name('trash.index');
+    Route::post('/corbeille/{type}/{id}/restaurer', [TrashController::class, 'restore'])->name('trash.restore');
+    Route::delete('/corbeille/{type}/{id}', [TrashController::class, 'forceDelete'])->name('trash.forceDelete');
 });
 
 // ================= fin des routes securisees =======================
@@ -92,6 +118,15 @@ Route::middleware(['auth'])->group(function () {
     // Remets bien le -force ici pour que l'URL corresponde à ton formulaire
     Route::post('/changer-mot-de-passe-force', [ForcedPasswordController::class, 'update'])->name('password.update.forced');
 
+    //profile 
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     //deconnexion 
     Route::post('/logout' ,[AuthController::class , 'logout'])->name('logout');
+
+    // Gestion paramètres boutique
+    Route::get('/settings/boutique', [BoutiqueSettingsController::class, 'index'])->name('settings.boutique');
+    Route::patch('/settings/boutique/update', [BoutiqueSettingsController::class, 'update'])->name('boutique.update');
+    Route::post('/settings/boutique/transfer', [BoutiqueSettingsController::class, 'transferOwnership'])->name('boutique.transfer');
+    Route::delete('/settings/boutique/destroy', [BoutiqueSettingsController::class, 'destroy'])->name('boutique.destroy');
 });

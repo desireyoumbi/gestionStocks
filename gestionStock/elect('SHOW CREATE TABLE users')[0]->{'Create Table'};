@@ -1,0 +1,26 @@
+[90m= [39m[
+    {#8008
+      +"[1mTable[22m": [32m"[39m[32musers[39m[32m"[39m,
+      +"[1mCreate Table[22m": <<<[32mEOS[39m
+        [32mCREATE TABLE `users` ([39m
+        [32m  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,[39m
+        [32m  `boutique_id` bigint(20) unsigned NOT NULL,[39m
+        [32m  `password` varchar(255) NOT NULL,[39m
+        [32m  `name` varchar(255) NOT NULL,[39m
+        [32m  `phone` varchar(100) NOT NULL,[39m
+        [32m  `email` varchar(255) NOT NULL,[39m
+        [32m  `role` enum('administrateur','vice_administrateur','vendeur') NOT NULL DEFAULT 'vendeur',[39m
+        [32m  `statuts` enum('actifs','passif') NOT NULL DEFAULT 'actifs',[39m
+        [32m  `remember_token` varchar(100) DEFAULT NULL,[39m
+        [32m  `doit_changer_mdp` tinyint(1) NOT NULL DEFAULT 1,[39m
+        [32m  `created_at` timestamp NULL DEFAULT NULL,[39m
+        [32m  `updated_at` timestamp NULL DEFAULT NULL,[39m
+        [32m  `deleted_at` timestamp NULL DEFAULT NULL,[39m
+        [32m  PRIMARY KEY (`id`),[39m
+        [32m  UNIQUE KEY `users_boutique_id_phone_unique` (`boutique_id`,`phone`),[39m
+        [32m  UNIQUE KEY `users_boutique_id_email_unique` (`boutique_id`,`email`),[39m
+        [32m  CONSTRAINT `users_boutique_id_foreign` FOREIGN KEY (`boutique_id`) REFERENCES `boutiques` (`id`) ON DELETE CASCADE[39m
+        [32m) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci[39m
+        [32mEOS[39m,
+    },
+  ]

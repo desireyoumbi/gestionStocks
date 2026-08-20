@@ -59,54 +59,77 @@ class UserController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {
-
-        // Récupère l'ID de la boutique de l'admin connecté
-        $boutiqueId = Auth::user()->boutique_id;
-        
-        $validate = $request->validate([
-            'name' => 'required|string|max:255',
-            // Unicité du téléphone propre à la boutique
-            'phone' => [
-                'required',
-                'string',
-                'max:9',
-                Rule::unique('users', 'phone')->where(function ($query) use ($boutiqueId) {
-                    return $query->where('boutique_id', $boutiqueId);
-                }),
-            ],
-            // Unicité de l'email propre à la boutique (si présent)
-            'email' => [
-                'nullable',
-                'string',
-                'email',
-                'max:255',
-                Rule::unique('users', 'email')->where(function ($query) use ($boutiqueId) {
-                    return $query->where('boutique_id', $boutiqueId);
-                }),
-            ],
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|string|in:vice_administrateur,vendeur',
-        ]);
-
-        // Sécurité supplémentaire : seuls les administrateurs peuvent supprimer
-        if (Auth::user()->role !== 'administrateur') {
-            abort(403, "Vous n'avez pas l'autorisation a modifier un utilisateur.");
-        }
-
-        // Attribue automatiquement le boutique_id de l'admin connecté
-        $validate['boutique_id'] = Auth::user()->boutique_id;
-        $validate['password'] = Hash::make($request->password);
-
-        // FORCAGE SYSTÉMATIQUE : Tout nouvel utilisateur doit changer son mot de passe
-        $validate['doit_changer_mdp'] = true;
-
-        User::create($validate);
-
-        return redirect()->route('user.index')
-            ->with('succes', 'Utilisateur créé avec succès. Il devra changer son mot de passe à sa première connexion.');
+{
+    // Sécurité : seuls les administrateurs peuvent créer un utilisateur
+    if (Auth::user()->role !== 'administrateur') {
+        abort(403, "Vous n'avez pas l'autorisation de créer un utilisateur.");
     }
 
+    $boutiqueId = Auth::user()->boutique_id;
+
+    // Vérification préalable : le téléphone ou l'email correspond-il à un compte
+    // précédemment supprimé (soft delete) dans cette même boutique ?
+    // On le fait AVANT la validation pour donner un message clair, plutôt que
+    // de laisser MySQL renvoyer une erreur brute de contrainte d'unicité.
+    $deletedByPhone = User::onlyTrashed()
+        ->where('boutique_id', $boutiqueId)
+        ->where('phone', $request->phone)
+        ->first();
+
+    if ($deletedByPhone) {
+        return back()->withErrors([
+            'phone' => "Ce numéro appartient à un ancien compte supprimé ({$deletedByPhone->name}). "
+                     . "Restaurez ce compte plutôt que d'en créer un nouveau, ou utilisez un autre numéro.",
+        ])->withInput();
+    }
+
+    if ($request->filled('email')) {
+        $deletedByEmail = User::onlyTrashed()
+            ->where('boutique_id', $boutiqueId)
+            ->where('email', $request->email)
+            ->first();
+
+        if ($deletedByEmail) {
+            return back()->withErrors([
+                'email' => "Cet email appartient à un ancien compte supprimé ({$deletedByEmail->name}). "
+                         . "Restaurez ce compte plutôt que d'en créer un nouveau, ou utilisez un autre email.",
+            ])->withInput();
+        }
+    }
+
+    // Validation classique : unicité parmi les comptes ACTIFS de cette boutique
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'phone' => [
+            'required',
+            'string',
+            'max:9',
+            Rule::unique('users', 'phone')->where(
+                fn ($query) => $query->where('boutique_id', $boutiqueId)
+            ),
+        ],
+        'email' => [
+            'nullable',
+            'string',
+            'email',
+            'max:255',
+            Rule::unique('users', 'email')->where(
+                fn ($query) => $query->where('boutique_id', $boutiqueId)
+            ),
+        ],
+        'password' => 'required|string|min:8|confirmed',
+        'role' => 'required|string|in:vice_administrateur,vendeur',
+    ]);
+
+    $validated['boutique_id'] = $boutiqueId;
+    $validated['password'] = Hash::make($validated['password']);
+    $validated['doit_changer_mdp'] = true;
+
+    User::create($validated);
+
+    return redirect()->route('user.index')
+        ->with('succes', 'Utilisateur créé avec succès. Il devra changer son mot de passe à sa première connexion.');
+}
     /**
      * Display the specified resource.
      */

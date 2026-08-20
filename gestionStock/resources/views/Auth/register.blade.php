@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inscription - E-Stockly</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ajout d'Alpine.js pour gérer le modal interactivement -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="min-h-screen flex bg-slate-50">
+<body class="min-h-screen flex bg-slate-50" x-data="{ showModal: false }">
 
     <!-- ================= PANNEAU GAUCHE (branding) ================= -->
     <div class="hidden lg:flex lg:w-[45%] min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900">
@@ -131,10 +133,10 @@
             @endif
 
             <!-- Formulaire -->
-            <form class="space-y-5" action="{{ route('register') }}" method="POST">
+            <form class="space-y-5" action="{{ route('register') }}" method="POST" x-ref="form">
                 @csrf
 
-                <!-- Nom de la boutique (mis en avant, seul sur sa ligne) -->
+                <!-- Nom de la boutique -->
                 <div>
                     <label for="nom_boutique" class="block text-sm font-medium text-slate-700 mb-1.5">Nom de votre boutique</label>
                     <input type="text" name="nom_boutique" id="nom_boutique" value="{{ old('nom_boutique') }}" required
@@ -199,12 +201,50 @@
                     </div>
                 </div>
 
-                <!-- Bouton de soumission -->
-                <button type="submit"
+                <!-- Bouton de soumission déclenchant le modal si le formulaire est valide -->
+                <button type="button"
+                    @click="$refs.form.checkValidity() ? showModal = true : $refs.form.reportValidity()"
                     class="w-full py-3 px-4 rounded-lg shadow-sm text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition mt-2">
                     Créer mon compte
                 </button>
             </form>
+
+            <!-- ================= MODAL DE VÉRIFICATION PÉDAGOGIQUE ================= -->
+            <div x-show="showModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
+                    
+                    <!-- Icône d'alerte -->
+                    <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+
+                    <h3 class="text-lg font-bold text-slate-900">Avez-vous déjà un compte ?</h3>
+                    <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+                        Si votre Administrateur vous a déjà créé un accès pour rejoindre une boutique existante, n'utilisez pas ce formulaire. 
+                        Connectez-vous simplement avec les identifiants qui vous ont été fournis.
+                    </p>
+
+                    <!-- Actions du modal -->
+                    <div class="mt-6 flex flex-col gap-2.5">
+                        <button type="button" @click="$refs.form.submit()"
+                            class="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition">
+                            Oui, je veux créer une nouvelle boutique
+                        </button>
+
+                        <a href="{{ route('login') }}"
+                            class="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 text-center transition">
+                            Non, j'ai déjà un compte (Se connecter)
+                        </a>
+
+                        <button type="button" @click="showModal = false"
+                            class="w-full py-2 px-4 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-700 transition mt-1">
+                            Annuler et modifier mes informations
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <!-- Badges de confiance -->
             <div class="flex items-center justify-center gap-5 text-xs text-slate-400 mt-6">

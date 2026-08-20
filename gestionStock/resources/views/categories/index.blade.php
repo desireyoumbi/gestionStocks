@@ -13,7 +13,7 @@
             <p class="text-sm text-slate-500 mt-0.5">{{ $categories->total() }} catégorie(s) enregistrée(s)</p>
         </div>
 
-        @if(Auth::check() && (method_exists(Auth::user(), 'isManager') ? Auth::user()->isManager() : Auth::user()->role !== 'vendeur'))
+        @if(Auth::check() && Auth::user()->role !== 'vendeur')
         <a href="{{ route('categories.create') }}"
            class="inline-flex items-center gap-2 bg-amber-500 text-slate-900 text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-amber-400 transition shadow-md hover:shadow-lg shrink-0">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -60,7 +60,9 @@
                         <th class="px-6 py-3.5">Description</th>
                         <th class="px-6 py-3.5">Créée par</th>
                         <th class="px-6 py-3.5">Date</th>
-                        <th class="px-6 py-3.5 text-right">Actions</th>
+                        @if(Auth::check() && Auth::user()->role !== 'vendeur')
+                            <th class="px-6 py-3.5 text-right">Actions</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -70,6 +72,8 @@
                         <td class="px-6 py-4 text-slate-500 max-w-xs truncate">{{ $category->description ?? '—' }}</td>
                         <td class="px-6 py-4 text-slate-500">{{ $category->user->name ?? '—' }}</td>
                         <td class="px-6 py-4 text-slate-500">{{ $category->created_at->format('d/m/Y') }}</td>
+                        
+                        @if(Auth::check() && Auth::user()->role !== 'vendeur')
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 <!-- Bouton Modifier -->
@@ -93,10 +97,11 @@
                                 </form>
                             </div>
                         </td>
+                        @endif
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center">
+                        <td colspan="{{ (Auth::check() && Auth::user()->role !== 'vendeur') ? 5 : 4 }}" class="px-6 py-12 text-center">
                             <div class="flex flex-col items-center justify-center space-y-3">
                                 <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shadow-inner">
                                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

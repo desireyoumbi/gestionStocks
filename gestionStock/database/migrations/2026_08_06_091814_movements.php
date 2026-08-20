@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('boutique_id')->constrained()->cascadeOnDelete();
             $table->enum('type', ['entree', 'sortie', 'ajustement']);
             $table->date('date');
-            $table->string('motif')->nullable();
+            $table->string('motif');
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
             $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();

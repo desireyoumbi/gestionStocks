@@ -24,12 +24,19 @@
                     Voici un aperçu de l'activité de votre boutique aujourd'hui.
                 </p>
                 <div class="flex flex-wrap gap-3 mt-5">
-                    <a href="{{ route('products.create') }}" class="bg-slate-900 text-white text-xs font-bold px-5 py-3 rounded-xl hover:bg-slate-800 transition shadow-lg">
-                        + Ajouter un produit
-                    </a>
-                    <a href="{{ route('suppliers.index') }}" class="bg-white/60 text-slate-900 text-xs font-bold px-5 py-3 rounded-xl hover:bg-white/90 transition backdrop-blur-sm shadow-sm">
-                        Voir les fournisseurs
-                    </a>
+                    @if(Auth::user()->role !== 'vendeur')
+                        <a href="{{ route('products.create') }}" class="bg-slate-900 text-white text-xs font-bold px-5 py-3 rounded-xl hover:bg-slate-800 transition shadow-lg">
+                            + Ajouter un produit
+                        </a>
+                        <a href="{{ route('suppliers.index') }}" class="bg-white/60 text-slate-900 text-xs font-bold px-5 py-3 rounded-xl hover:bg-white/90 transition backdrop-blur-sm shadow-sm">
+                            Voir les fournisseurs
+                        </a>
+                    @else
+                        <!-- Bouton alternatif pour le vendeur si besoin -->
+                        <a href="{{ route('movements.create') }}" class="bg-slate-900 text-white text-xs font-bold px-5 py-3 rounded-xl hover:bg-slate-800 transition shadow-lg">
+                            + Effectuer un mouvement
+                        </a>
+                    @endif
                 </div>
             </div>
             <!-- Motif décoratif -->
@@ -37,7 +44,7 @@
             <div class="absolute right-16 bottom-0 w-24 h-24 bg-white/10 rounded-full pointer-events-none"></div>
         </div>
 
-        <!-- Cartes statistiques (Ombres et contrastes renforcés) -->
+        <!-- Cartes statistiques -->
         <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-2xl shadow-slate-300/50 flex flex-col justify-between">
                 <div class="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center mb-4 text-amber-500 shadow-sm">
@@ -76,7 +83,7 @@
             </div>
         </div>
 
-        <!-- Zone État du stock : donut + résumé (Ombre renforcée) -->
+        <!-- Zone État du stock -->
         <div class="bg-white border border-slate-200/80 rounded-3xl p-8 shadow-2xl shadow-slate-300/50">
             <div class="flex items-center justify-between mb-6">
                 <div>
@@ -87,7 +94,6 @@
 
             @if($totalProducts > 0)
             <div class="flex flex-col sm:flex-row items-center gap-8">
-                <!-- Donut en CSS pur (conic-gradient) -->
                 <div class="relative w-40 h-40 shrink-0 rounded-full shadow-inner"
                      style="background: conic-gradient(#10b981 0% {{ $pctDisponible }}%, #ef4444 {{ $pctDisponible }}% 100%);">
                     <div class="absolute inset-3 bg-white rounded-full flex items-center justify-center flex-col shadow-sm">
@@ -123,16 +129,18 @@
             @else
             <div class="text-center py-10">
                 <p class="text-xs font-medium text-slate-400">Aucun produit enregistré pour l'instant.</p>
-                <a href="{{ route('products.create') }}" class="inline-block mt-3 text-xs font-bold text-amber-600 hover:text-amber-700">
-                    Ajouter votre premier produit &rarr;
-                </a>
+                @if(Auth::user()->role !== 'vendeur')
+                    <a href="{{ route('products.create') }}" class="inline-block mt-3 text-xs font-bold text-amber-600 hover:text-amber-700">
+                        Ajouter votre premier produit &rarr;
+                    </a>
+                @endif
             </div>
             @endif
         </div>
 
     </div>
 
-    <!-- COLONNE LATÉRALE : "Mes activités" (Ombre très prononcée) -->
+    <!-- COLONNE LATÉRALE -->
     <div class="space-y-6">
 
         <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-2xl shadow-slate-300/50">
@@ -141,13 +149,9 @@
                 <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">Récent</span>
             </div>
 
-            <!-- Liste des mini-cartes d'activité -->
             <div class="space-y-3">
-                <!-- Élément 1 -->
                 <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-start gap-3 transition hover:bg-amber-50/40">
-                    <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 font-bold text-xs mt-0.5">
-                        📦
-                    </div>
+                    <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 font-bold text-xs mt-0.5">📦</div>
                     <div class="flex-1 min-w-0">
                         <p class="text-xs font-bold text-slate-800 truncate">Vérification du stock</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Actualisation des inventaires</p>
@@ -155,11 +159,8 @@
                     <span class="text-[10px] font-medium text-slate-400 shrink-0">Aujourd'hui</span>
                 </div>
 
-                <!-- Élément 2 -->
                 <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-start gap-3 transition hover:bg-amber-50/40">
-                    <div class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 font-bold text-xs mt-0.5">
-                        🏷️
-                    </div>
+                    <div class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 font-bold text-xs mt-0.5">🏷️</div>
                     <div class="flex-1 min-w-0">
                         <p class="text-xs font-bold text-slate-800 truncate">Gestion des catégories</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">{{ $totalCategories }} catégories actives</p>
@@ -167,21 +168,19 @@
                     <span class="text-[10px] font-medium text-slate-400 shrink-0">Récent</span>
                 </div>
 
-                <!-- Élément 3 -->
                 <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-start gap-3 transition hover:bg-amber-50/40">
-                    <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-bold text-xs mt-0.5">
-                        ✨
-                    </div>
+                    <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-bold text-xs mt-0.5">✨</div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-xs font-bold text-slate-800 truncate">Session administrateur</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Connecté en tant que {{ Auth::user()->role ?? 'Admin' }}</p>
+                        <p class="text-xs font-bold text-slate-800 truncate">Session active</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Connecté en tant que {{ ucfirst(Auth::user()->role ?? 'Utilisateur') }}</p>
                     </div>
                     <span class="text-[10px] font-medium text-emerald-600 shrink-0 font-bold">Actif</span>
                 </div>
             </div>
         </div>
 
-        <!-- Bloc d'aide / Raccourci rapide additionnel -->
+        <!-- Bloc d'aide / Raccourci : Visible uniquement pour les non-vendeurs -->
+        @if(Auth::user()->role !== 'vendeur')
         <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 text-white shadow-2xl shadow-slate-900/40">
             <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center mb-4 text-amber-400">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -199,6 +198,7 @@
                 </svg>
             </a>
         </div>
+        @endif
 
     </div>
 

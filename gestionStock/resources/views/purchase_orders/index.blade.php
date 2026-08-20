@@ -40,7 +40,7 @@
         <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-2xl shadow-md">{{ session('error') }}</div>
     @endif
 
-    <!-- Filtres par statut (avec ombre renforcée) -->
+    <!-- Filtres par statut -->
     <div class="flex flex-wrap gap-2 bg-white p-3 rounded-2xl shadow-md border border-slate-100">
         <a href="{{ route('purchase_orders.index') }}"
            class="px-4 py-2 rounded-xl text-sm font-medium transition {{ !$status ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100' }}">
@@ -54,7 +54,7 @@
         @endforeach
     </div>
 
-    <!-- Tableau principal (avec shadow-lg plus foncé et coins arrondis modernisés) -->
+    <!-- Tableau principal -->
     <div class="bg-white border border-slate-100 rounded-3xl shadow-lg overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -79,13 +79,30 @@
                         <td class="px-6 py-4 text-slate-500">{{ $order->user->name ?? '—' }}</td>
                         <td class="px-6 py-4 text-slate-500">{{ $order->created_at->format('d/m/Y') }}</td>
                         <td class="px-6 py-4 text-right">
-                            <a href="{{ route('purchase_orders.show', $order) }}" class="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold px-3 py-1.5 rounded-xl transition text-xs">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                Voir détail
-                            </a>
+                            <div class="inline-flex items-center justify-end gap-2">
+                                <!-- Bouton Valider (Apparaît uniquement si en attente et rôle autorisé) -->
+                                @if($order->status === 'en_attente' && Auth::user()->role !== 'vendeur')
+                                    <form action="{{ route('purchase_orders.receive', $order) }}" method="POST" onsubmit="return confirm('Voulez-vous vraiment valider cette commande ? Cela va générer le mouvement d\'entrée et mettre à jour le stock.')">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold px-3 py-1.5 rounded-xl transition text-xs">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Valider
+                                        </button>
+                                    </form>
+                                @endif
+
+                                <!-- Bouton Voir détail -->
+                                <a href="{{ route('purchase_orders.show', $order) }}" class="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold px-3 py-1.5 rounded-xl transition text-xs">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Voir détail
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     @empty

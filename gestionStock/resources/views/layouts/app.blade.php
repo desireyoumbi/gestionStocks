@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Stockly</title>
+    <title>{{ Auth::user()->boutique->nom ?? 'E-Stockly' }}</title>
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -12,6 +12,8 @@
             darkMode: 'class',
         }
     </script>
+    <!-- Alpine.js (nécessaire pour les onglets de la corbeille) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-amber-100/50 dark:bg-gray-900 font-sans antialiased text-gray-800 dark:text-gray-100 transition-colors duration-200">
 
@@ -22,16 +24,22 @@
             <!-- SIDEBAR GAUCHE (Taille fixe et verrouillée avec shrink-0) -->
             <aside class="w-full lg:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-5 shrink-0">
                 <div>
-                    <!-- Logo / Titre -->
+                    <!-- Logo / Nom de la boutique dynamique -->
+                    @php
+                        $shopName = Auth::user()->boutique->nom ?? 'E-Stockly';
+                        // Génère les initiales automatiquement (ex: "Ma Boutique" -> "MB")
+                        $words = explode(' ', trim($shopName));
+                        $initials = count($words) >= 2 ? strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1)) : strtoupper(substr($shopName, 0, 2));
+                    @endphp
                     <div class="flex items-center space-x-3 mb-8 px-1">
-                        <div class="bg-amber-500 text-gray-900 w-9 h-9 rounded-xl font-black flex items-center justify-center text-sm">
-                            ES
+                        <div class="bg-amber-500 text-gray-900 w-9 h-9 rounded-xl font-black flex items-center justify-center text-sm shrink-0">
+                            {{ $initials }}
                         </div>
-                        <span class="text-white font-bold text-lg tracking-wide">E-STOCKLY</span>
+                        <span class="text-white font-bold text-base tracking-wide truncate" title="{{ $shopName }}">{{ $shopName }}</span>
                     </div>
 
                     <!-- Liens de navigation -->
-                    <nav class="space-y-1.5">
+                    <nav class="space-y-1.5 max-h-[58vh] overflow-y-auto pr-1">
 
                         <!-- Tableau de bord -->
                         <a href="{{ route('dashboard') }}"
@@ -69,7 +77,8 @@
                             Catégories
                         </a>
 
-                        <!-- Commandes (Purchase Orders) -->
+                        <!-- Commandes (Purchase Orders) - Visible uniquement Admin & Vice-Admin -->
+                        @if(Auth::check() && Auth::user()->role !== 'vendeur')
                         <a href="{{ route('purchase_orders.index') }}"
                            class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium
                                   {{ request()->routeIs('purchase_orders*')
@@ -80,8 +89,10 @@
                             </svg>
                             Commandes
                         </a>
+                        @endif
 
-                        <!-- Fournisseurs -->
+                        <!-- Fournisseurs - Visible uniquement Admin & Vice-Admin -->
+                        @if(Auth::check() && Auth::user()->role !== 'vendeur')
                         <a href="{{ route('suppliers.index') }}"
                            class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium
                                   {{ request()->routeIs('suppliers*')
@@ -92,14 +103,28 @@
                             </svg>
                             Fournisseurs
                         </a>
+                        @endif
+
+                        <!-- Mouvements -->
+                        <a href="{{ route('movements.index') }}"
+                           class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium
+                                  {{ request()->routeIs('movements*')
+                                        ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20'
+                                        : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            Mouvements
+                        </a>
 
                         <!-- Section Admin -->
                         @if(Auth::check() && Auth::user()->role === 'administrateur')
                         <div class="pt-4">
                             <p class="text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-2 px-4">Admin</p>
+
                             <a href="{{ route('user.index') }}"
                                class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium
-                                      {{ request()->routeIs('users*') || request()->routeIs('user*')
+                                      {{ request()->routeIs('user*')
                                             ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20'
                                             : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
                                 <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -107,27 +132,57 @@
                                 </svg>
                                 Utilisateurs
                             </a>
+
+                            <!-- Corbeille -->
+                            <a href="{{ route('trash.index') }}"
+                               class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium
+                                      {{ request()->routeIs('trash*')
+                                            ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20'
+                                            : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Corbeille
+                            </a>
+
+                            <!-- Paramètres Boutique -->
+                            <a href="{{ route('settings.boutique') }}"
+                               class="flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium
+                                      {{ request()->routeIs('settings.boutique')
+                                            ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20'
+                                            : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Paramètres Boutique
+                            </a>
                         </div>
                         @endif
                     </nav>
                 </div>
 
-                <!-- Bas de sidebar : Profil actif, theme, Deconnexion -->
+                <!-- Bas de sidebar : Profil cliquable, theme, Deconnexion -->
                 <div class="space-y-3 pt-6 border-t border-gray-800">
 
-                    <div class="flex items-center gap-3 bg-gray-900 p-3 rounded-2xl border border-gray-800">
-                        <div class="w-9 h-9 rounded-full bg-amber-500 text-gray-900 font-bold flex items-center justify-center text-sm shrink-0">
+                    <!-- Lien du profil utilisateur -->
+                    <a href="{{ route('profile.edit') }}" 
+                       class="flex items-center gap-3 bg-gray-900 p-3 rounded-2xl border border-gray-800 hover:border-amber-500/50 transition group {{ request()->routeIs('profile*') ? 'border-amber-500 bg-gray-850' : '' }}">
+                        <div class="w-9 h-9 rounded-full bg-amber-500 text-gray-900 font-bold flex items-center justify-center text-sm shrink-0 group-hover:scale-105 transition">
                             {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
                         </div>
-                        <div class="min-w-0">
-                            <div class="text-xs font-bold text-white truncate">{{ Auth::user()->name ?? 'Utilisateur' }}</div>
-                            <div class="text-[10px] text-green-400 flex items-center">
-                                <span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block mr-1"></span> Actif
+                        <div class="min-w-0 flex-1">
+                            <div class="text-xs font-bold text-white truncate group-hover:text-amber-400 transition">{{ Auth::user()->name ?? 'Utilisateur' }}</div>
+                            <div class="text-[10px] text-amber-500/90 font-medium truncate">
+                                {{ ucfirst(Auth::user()->role ?? 'Membre') }}
                             </div>
                         </div>
-                    </div>
+                        <svg class="w-4 h-4 text-gray-600 group-hover:text-amber-400 transition shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </a>
 
-                    <!-- Bascule Clair / Sombre (Fonctionnelle) -->
+                    <!-- Bascule Clair / Sombre -->
                     <div class="flex items-center bg-gray-900 rounded-xl border border-gray-800 p-1 text-xs font-medium">
                         <button type="button" id="theme-light-btn" onclick="setTheme('light')" class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all duration-150">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -157,7 +212,7 @@
                 </div>
             </aside>
 
-            <!-- ZONE CENTRALE (Contenu dynamique des vues) -->
+            <!-- ZONE CENTRALE -->
             <main class="flex-1 bg-gray-50 dark:bg-gray-900 rounded-l-3xl p-6 lg:p-8 overflow-y-auto text-gray-900 dark:text-gray-100 min-w-0 transition-colors duration-200">
                 @yield('content')
             </main>
@@ -174,23 +229,20 @@
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
                 localStorage.setItem('theme', 'dark');
-                
-                // Style du bouton actif Sombre
+
                 darkBtn.className = "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-amber-500 text-gray-900 font-semibold shadow";
                 lightBtn.className = "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-gray-400 hover:text-white";
             } else {
                 document.documentElement.classList.remove('dark');
                 localStorage.setItem('theme', 'light');
-                
-                // Style du bouton actif Clair
+
                 lightBtn.className = "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-amber-500 text-gray-900 font-semibold shadow";
                 darkBtn.className = "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-gray-400 hover:text-white";
             }
         }
 
-        // Initialisation au chargement de la page selon le localStorage
         (function() {
-            const savedTheme = localStorage.getItem('theme') || 'dark'; // Sombre par défaut
+            const savedTheme = localStorage.getItem('theme') || 'dark';
             setTheme(savedTheme);
         })();
     </script>
