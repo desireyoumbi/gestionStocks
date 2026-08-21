@@ -68,38 +68,52 @@ class ProductController extends Controller
     /**
      * Enregistre un nouveau produit dans la base de données.
      */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'reference' => 'nullable|string|max:100',
-            'purchase_price' => 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0|gte:purchase_price',
-            'alert_threshold' => 'nullable|integer|min:0',
-            'category_id' => 'required|exists:categories,id',
-            'description' => 'nullable|string|max:1000',
-        ],[
-        // Message d'erreur personnalisé en français pour plus de clarté
+  public function store(Request $request)
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'reference' => [
+            'nullable',
+            'string',
+            'max:100',
+            \Illuminate\Validation\Rule::unique('products')->where(function ($query) {
+                return $query->where('boutique_id', Auth::user()->boutique_id);
+            }),
+        ],
+        'purchase_price' => 'required|numeric|min:0',
+        'selling_price' => 'required|numeric|min:0|gte:purchase_price',
+        'alert_threshold' => 'nullable|integer|min:0',
+        'category_id' => 'required|exists:categories,id',
+        'description' => 'nullable|string|max:1000',
+    ],[
+        'reference.unique' => 'Cette référence existe déjà pour cette boutique.',
         'selling_price.gte' => 'Le prix de vente ne peut pas être inférieur au prix d\'achat.',
     ]);
         
-
-         // Si le vendeur parvient à passer, on s'assure qu'il ne touche pas au prix d'achat
-        if (Auth::user()->role === 'vendeur') {
-            return abort(403,"vous n'etes pas autoriser a modifier des information sur cette page");
-        }
-
-        $validated['quantity'] = 0; // Le stock commence à 0
-        $validated['status'] = 'rupture'; 
-        $validated['boutique_id'] = Auth::user()->boutique_id;
-        $validated['user_id'] = Auth::id();
-
-        Product::create($validated);
-
-        return redirect()->route('products.index')
-            ->with('succes', 'Produit ajouté avec succès.');
+    // Vérification des droits
+    if (Auth::user()->role === 'vendeur') {
+        return abort(403, "vous n'etes pas autoriser a modifier des information sur cette page");
     }
 
+    $validated['quantity'] = 0; // Le stock commence à 0
+    $validated['status'] = 'rupture'; 
+    $validated['boutique_id'] = Auth::user()->boutique_id;
+    $validated['user_id'] = Auth::id();
+
+    // 1. Création du produit
+    $product = Product::create($validated);
+
+    // 2. Création immédiate de la notification de rupture initiale
+    \App\Models\Notification::create([
+        'boutique_id' => $product->boutique_id ?? 1,
+        'user_id' => Auth::id(),
+        'title' => 'Rupture de stock',
+        'message' => "Le produit '{$product->name}' a été créé avec un stock de 0.",
+        'type' => 'warning'
+    ]);
+
+    return redirect()->route('products.index')->with('success', 'Produit créé avec succès.');
+}
     /**
      * Affiche les détails d'un produit spécifique.
      */

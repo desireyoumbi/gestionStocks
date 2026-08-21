@@ -12,34 +12,28 @@ class SupplierController extends Controller
      * Affiche la liste des fournisseurs de la boutique connectée avec option de recherche.
      */
     public function index(Request $request)
-    {
-
-        // Si le vendeur parvient à passer, on s'assure qu'il ne touche pas au prix d'achat
-        if (Auth::user()->role === 'vendeur') {
-            return abort(403,"vous n'etes pas autoriser a voir cette page");
-        }
-
-        // 1. On récupère le terme de recherche s'il existe dans l'URL 
-        $search = $request->input('search');
-
-        // 2. On construit la requête de base (isolée par boutique)
-        $query = Supplier::where('boutique_id', Auth::user()->boutique_id);
-
-        // 3. Si l'utilisateur a tapé quelque chose, on filtre les résultats
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('contact_person', 'LIKE', "%{$search}%")
-                  ->orWhere('phone', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%");
-            });
-        }
-
-        // 4. On récupère les résultats avec pagination (et on garde la recherche active dans les pages suivantes grâce à ->appends())
-        $suppliers = $query->latest()->paginate(10)->appends(['search' => $search]);
-
-        return view('suppliers.index', compact('suppliers', 'search'));
+{
+    if (Auth::user()->role === 'vendeur') {
+        return abort(403, "Vous n'êtes pas autorisé à voir cette page");
     }
+
+    $boutiqueId = Auth::user()->boutique_id;
+    $search = $request->input('search');
+
+    $query = Supplier::where('boutique_id', $boutiqueId);
+
+    if ($search) {
+        $query->where(function($q) use ($search) {
+            $q->where('name', 'LIKE', "%{$search}%")
+              ->orWhere('phone', 'LIKE', "%{$search}%")
+              ->orWhere('email', 'LIKE', "%{$search}%");
+        });
+    }
+
+    $suppliers = $query->latest()->paginate(10)->appends(['search' => $search]);
+
+    return view('suppliers.index', compact('suppliers', 'search'));
+}
     /**
      * Affiche le formulaire de création d'un fournisseur.
      */

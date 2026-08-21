@@ -86,4 +86,14 @@ class User extends Authenticatable
     {
         return $this->role === 'administrateur';
     }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class)->latest();
+    }
+
+    public function unreadNotifications()
+    {
+        return $this->hasMany(Notification::class)->whereNull('read_at')->latest();
+    }
 }

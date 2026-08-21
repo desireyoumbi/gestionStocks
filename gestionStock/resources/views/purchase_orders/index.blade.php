@@ -1,5 +1,6 @@
 @extends('layouts.app')
-
+@section('header_title', ' Mes Commandes')
+@section('header_subtitle', 'Catalogue et stocks')
 @section('page-title', 'Commandes fournisseurs')
 
 @section('content')

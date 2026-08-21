@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\ForcedPasswordController;
@@ -7,12 +8,17 @@ use App\Http\Controllers\BoutiqueSettingsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MovementController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Notification;
 
 /*
 |--------------------------------------------------------------------------
@@ -87,21 +93,40 @@ Route::middleware(['auth', 'check.password'])->group(function () {
     Route::post('/commandes/{purchaseOrder}/annuler', [PurchaseOrderController::class, 'cancel'])->name('purchase_orders.cancel');
 
 
-    //mouvements 
-    // Liste des mouvements (avec recherche et filtres)
-    Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');
-    // Formulaire de création d'un mouvement
-    Route::get('/movements/create', [MovementController::class, 'create'])->name('movements.create');
-    // Enregistrement du nouveau mouvement
-    Route::post('/movements', [MovementController::class, 'store'])->name('movements.store');
-    // Affichage des détails d'un mouvement spécifique
-    Route::get('/movements/{movement}', [MovementController::class, 'show'])->name('movements.show');
-    // Formulaire d'édition (modification du motif/date)
-    Route::get('/movements/{movement}/edit', [MovementController::class, 'edit'])->name('movements.edit');
-    // Mise à jour du mouvement
-    Route::put('/movements/{movement}', [MovementController::class, 'update'])->name('movements.update');
-    // Suppression / Annulation d'un mouvement (avec réajustement du stock)
-    Route::delete('/movements/{movement}', [MovementController::class, 'destroy'])->name('movements.destroy');
+    // mouvements 
+    // // Liste des mouvements (avec recherche et filtres)
+    // Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');
+    // // Formulaire de création d'un mouvement
+    // Route::get('/movements/create', [MovementController::class, 'create'])->name('movements.create');
+    // // Enregistrement du nouveau mouvement//
+    // Route::post('/movements', [MovementController::class, 'store'])->name('movements.store');
+    // // Affichage des détails d'un mouvement spécifique
+    // Route::get('/movements/{movement}', [MovementController::class, 'show'])->name('movements.show');
+    // // Formulaire d'édition (modification du motif/date)
+    // Route::get('/movements/{movement}/edit', [MovementController::class, 'edit'])->name('movements.edit');
+    // // Mise à jour du mouvement
+    // Route::put('/movements/{movement}', [MovementController::class, 'update'])->name('movements.update');
+    // // Suppression / Annulation d'un mouvement (avec réajustement du stock)
+    // Route::delete('/movements/{movement}', [MovementController::class, 'destroy'])->name('movements.destroy');
+
+    // Journal des mouvements (affichage du jour)
+// Journal des mouvements global
+Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');
+
+// Page dédiée aux Ventes (Liste, Formulaire, Enregistrement, Suppression)
+Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
+Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
+Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
+Route::delete('/sales/{id}', [SaleController::class, 'destroy'])->name('sales.destroy');
+// Page dédiée aux Approvisionnements
+Route::get('/supplies/create', [SupplyController::class, 'create'])->name('supplies.create');
+Route::post('/supplies', [SupplyController::class, 'store'])->name('supplies.store');
+
+// approvissionnement 
+Route::get('/supplies', [SupplyController::class, 'index'])->name('supplies.index');
+Route::get('/supplies/create', [SupplyController::class, 'create'])->name('supplies.create');
+Route::post('/supplies', [SupplyController::class, 'store'])->name('supplies.store');
+Route::delete('/supplies/{id}', [SupplyController::class, 'destroy'])->name('supplies.destroy');
 
     //restaurer ou supprimer 
     Route::get('/corbeille', [TrashController::class, 'index'])->name('trash.index');
@@ -129,4 +154,13 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/settings/boutique/update', [BoutiqueSettingsController::class, 'update'])->name('boutique.update');
     Route::post('/settings/boutique/transfer', [BoutiqueSettingsController::class, 'transferOwnership'])->name('boutique.transfer');
     Route::delete('/settings/boutique/destroy', [BoutiqueSettingsController::class, 'destroy'])->name('boutique.destroy');
+
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
+    //ajustements
+    Route::get('/adjustments', [AdjustmentController::class, 'index'])->name('adjustments.index');
+    Route::get('/adjustments/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
+    Route::post('/adjustments', [AdjustmentController::class, 'store'])->name('adjustments.store');
 });
+

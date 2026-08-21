@@ -1,28 +1,91 @@
 @extends('layouts.app')
+@section('header_title', ' Produits')
+@section('header_subtitle', 'Catalogue et stocks')
 
 @section('content')
 <div class="space-y-6">
 
     <!-- En-tête -->
     <div class="flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-900">Gestion des Produits</h1>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Gestion des Produits</h1>
+            <p class="text-xs text-gray-500 mt-0.5">Consultez, filtrez et gérez l'inventaire de votre boutique.</p>
+        </div>
         
         {{-- Seuls les managers (Admin/Vice) peuvent ajouter un produit --}}
         @if(Auth::user()->isManager())
-            <a href="{{ route('products.create') }}" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold px-4 py-2.5 rounded-xl transition shadow-md hover:shadow-lg">
-                + Ajouter un produit
+            <a href="{{ route('products.create') }}" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold px-4 py-2.5 rounded-xl transition shadow-md hover:shadow-lg flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Ajouter un produit
             </a>
         @endif
     </div>
 
+    {{-- Cartes Statistiques (KPIs) inspirées du modèle pro --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Produits -->
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Produits</div>
+                <div class="text-xl font-black text-gray-900 mt-0.5">{{ $totalProducts ?? count($products) }}</div>
+            </div>
+        </div>
+
+        <!-- Valeur du Stock -->
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Valeur du Stock</div>
+                <div class="text-base font-black text-gray-900 mt-0.5">{{ number_format($stockValue ?? 0, 0, ',', ' ') }} FCFA</div>
+            </div>
+        </div>
+
+        <!-- Stock Faible -->
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Stock Faible</div>
+                <div class="text-xl font-black text-amber-600 mt-0.5">{{ $lowStockCount ?? 0 }}</div>
+            </div>
+        </div>
+
+        <!-- Rupture de stock -->
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rupture</div>
+                <div class="text-xl font-black text-red-600 mt-0.5">{{ $outOfStockCount ?? 0 }}</div>
+            </div>
+        </div>
+    </div>
+
     {{-- Message flash de succès --}}
     @if(session('succes'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-2xl relative shadow-sm">
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-2xl relative shadow-sm text-sm">
             {{ session('succes') }}
         </div>
     @endif
 
-    {{-- Filtres (Ombre plus prononcée : shadow-md) --}}
+    {{-- Filtres --}}
     <form method="GET" action="{{ route('products.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-3xl shadow-md border border-gray-100">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Nom, référence..." class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
         
@@ -42,7 +105,7 @@
         <button type="submit" class="bg-gray-900 hover:bg-gray-800 text-white font-bold px-4 py-2.5 rounded-xl transition shadow-md">Filtrer</button>
     </form>
 
-    {{-- Tableau des produits (Ombre plus prononcée : shadow-md) --}}
+    {{-- Tableau des produits --}}
     <div class="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -51,7 +114,6 @@
                         <th class="px-6 py-4">Produit</th>
                         <th class="px-6 py-4">Catégorie</th>
                         <th class="px-6 py-4">Prix Vente</th>
-                        {{-- On cache le prix d'achat aux vendeurs --}}
                         @if(Auth::user()->isManager())
                             <th class="px-6 py-4">Prix Achat</th>
                         @endif
@@ -79,19 +141,29 @@
                             </span>
                         </td>
                         
-                        <td class="px-6 py-4 text-right space-x-3">
-                            {{-- Modification : Admin & Vice-Admin --}}
-                            @if(Auth::user()->isManager())
-                                <a href="{{ route('products.edit', $product->id) }}" class="text-amber-600 hover:text-amber-800 font-bold transition">Modifier</a>
-                            @endif
-                            
-                            {{-- Suppression : Admin uniquement --}}
-                            @if(Auth::user()->isAdmin())
-                                <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Supprimer ce produit ?');">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="text-red-500 hover:text-red-700 font-bold transition">Supprimer</button>
-                                </form>
-                            @endif
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                {{-- Modification : Admin & Vice-Admin --}}
+                                @if(Auth::user()->isManager())
+                                    <a href="{{ route('products.edit', $product->id) }}" class="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl transition" title="Modifier">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </a>
+                                @endif
+                                
+                                {{-- Suppression : Admin uniquement --}}
+                                @if(Auth::user()->isAdmin())
+                                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Supprimer ce produit ?');">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition" title="Supprimer">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                     @empty
