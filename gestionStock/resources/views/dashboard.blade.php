@@ -44,7 +44,7 @@
             <div class="absolute right-16 bottom-0 w-24 h-24 bg-white/10 rounded-full pointer-events-none"></div>
         </div>
 
-        <!-- Cartes statistiques -->
+        <!-- Cartes statistiques de base -->
         <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-2xl shadow-slate-300/50 flex flex-col justify-between">
                 <div class="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center mb-4 text-amber-500 shadow-sm">
@@ -79,6 +79,57 @@
                 <div>
                     <p class="text-2xl font-black text-slate-900">{{ $totalCategories }}</p>
                     <p class="text-xs font-semibold text-slate-400 mt-0.5">Catégories</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION FINANCIÈRE (CA, Dépenses & Bénéfices du mois) -->
+        <div class="bg-white border border-slate-200/80 rounded-3xl p-8 shadow-2xl shadow-slate-300/50">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-base font-black text-slate-900 tracking-tight">Aperçu Financier du Mois</h2>
+                    <p class="text-xs font-medium text-slate-400 mt-0.5">Suivi des performances et de la rentabilité</p>
+                </div>
+                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Temps réel</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- Chiffre d'affaires Mois -->
+                <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/60 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-slate-500">Chiffre d'affaires</span>
+                        <span class="w-7 h-7 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xs">📈</span>
+                    </div>
+                    <div>
+                        <p class="text-xl font-black text-slate-900">{{ number_format($caMonth, 0, ',', ' ') }} FCFA</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Semaine : {{ number_format($caWeek, 0, ',', ' ') }} FCFA</p>
+                    </div>
+                </div>
+
+                <!-- Dépenses Mois -->
+                <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/60 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-slate-500">Dépenses</span>
+                        <span class="w-7 h-7 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-xs">💸</span>
+                    </div>
+                    <div>
+                        <p class="text-xl font-black text-slate-900">{{ number_format($expensesMonth, 0, ',', ' ') }} FCFA</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Semaine : {{ number_format($expensesWeek, 0, ',', ' ') }} FCFA</p>
+                    </div>
+                </div>
+
+                <!-- Bénéfice Net Mois -->
+                <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/60 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-slate-500">Bénéfice Net</span>
+                        <span class="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">💰</span>
+                    </div>
+                    <div>
+                        <p class="text-xl font-black {{ $netProfitMonth >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                            {{ number_format($netProfitMonth, 0, ',', ' ') }} FCFA
+                        </p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Semaine : {{ number_format($netProfitWeek, 0, ',', ' ') }} FCFA</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -142,6 +193,28 @@
 
     <!-- COLONNE LATÉRALE -->
     <div class="space-y-6">
+
+        <!-- Produit Phare de la Semaine -->
+        <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-2xl shadow-slate-300/50">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-black text-slate-900 tracking-tight">Top Vente</h2>
+                <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">Semaine</span>
+            </div>
+
+            @if(isset($bestProduct))
+                <div class="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-bold text-sm shadow-md">🔥</div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-black text-slate-900 truncate">{{ $bestProduct->name }}</p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Prix : {{ number_format($bestProduct->selling_price, 0, ',', ' ') }} FCFA</p>
+                    </div>
+                </div>
+            @else
+                <div class="text-center py-6 bg-slate-50 rounded-2xl border border-slate-200/60">
+                    <p class="text-xs text-slate-400 font-medium">Aucune vente enregistrée cette semaine.</p>
+                </div>
+            @endif
+        </div>
 
         <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-2xl shadow-slate-300/50">
             <div class="flex items-center justify-between mb-5">

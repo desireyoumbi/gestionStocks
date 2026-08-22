@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -21,7 +22,6 @@ class ProfileController extends Controller
         if ($user->role === 'vendeur') {
             $stats['total_movements'] = Movement::where('user_id', $user->id)->count();
         } else {
-            // Pour l'admin/vice-admin, on peut afficher les mouvements de toute la boutique
             $stats['total_movements'] = Movement::where('boutique_id', $user->boutique_id)->count();
         }
 
@@ -35,12 +35,12 @@ class ProfileController extends Controller
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
+            'telephone' => ['nullable', 'string', 'max:20'], // Ajout du téléphone
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ];
 
-        // Si c'est un administrateur, on peut l'autoriser à modifier son email si besoin, 
-        // ou bloquer l'email pour tout le monde. Restreignons l'email uniquement à l'admin :
+        // L'email reste modifiable uniquement par l'administrateur
         if ($user->role === 'administrateur') {
             $rules['email'] = ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id];
         }
@@ -48,6 +48,7 @@ class ProfileController extends Controller
         $request->validate($rules);
 
         $user->name = $request->name;
+        $user->telephone = $request->telephone; // Enregistrement du téléphone
 
         // Mise à jour de l'email seulement si admin
         if ($user->role === 'administrateur' && $request->filled('email')) {

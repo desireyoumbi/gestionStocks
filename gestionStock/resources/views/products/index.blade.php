@@ -12,15 +12,25 @@
             <p class="text-xs text-gray-500 mt-0.5">Consultez, filtrez et gérez l'inventaire de votre boutique.</p>
         </div>
         
-        {{-- Seuls les managers (Admin/Vice) peuvent ajouter un produit --}}
-        @if(Auth::user()->isManager())
-            <a href="{{ route('products.create') }}" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold px-4 py-2.5 rounded-xl transition shadow-md hover:shadow-lg flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        <div class="flex items-center gap-3">
+            {{-- Bouton d'export PDF bien visible --}}
+            <a href="{{ route('products.export-pdf') }}" class="bg-white hover:bg-gray-50 text-gray-800 font-bold px-4 py-2.5 rounded-xl transition border border-gray-300 shadow-sm hover:shadow flex items-center gap-2 text-xs">
+                <svg class="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Ajouter un produit
+                Exporter PDF
             </a>
-        @endif
+
+            {{-- Seuls les managers (Admin/Vice) peuvent ajouter un produit --}}
+            @if(Auth::user()->isManager())
+                <a href="{{ route('products.create') }}" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold px-4 py-2.5 rounded-xl transition shadow-md hover:shadow-lg flex items-center gap-2 text-xs">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Ajouter un produit
+                </a>
+            @endif
+        </div>
     </div>
 
     {{-- Cartes Statistiques (KPIs) inspirées du modèle pro --}}
@@ -85,9 +95,27 @@
         </div>
     @endif
 
-    {{-- Filtres --}}
-    <form method="GET" action="{{ route('products.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-3xl shadow-md border border-gray-100">
-        <input type="text" name="search" value="{{ request('search') }}" placeholder="Nom, référence..." class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+    {{-- Filtres avec recherche instantanée via Alpine.js --}}
+    <form method="GET" action="{{ route('products.index') }}" x-data="{ search: '{{ request('search') }}' }" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-3xl shadow-md border border-gray-100">
+        <input type="text" 
+               name="search" 
+               x-model="search" 
+               @input.debounce.300ms="
+                   const url = new URL(window.location.href);
+                   if (search) { url.searchParams.set('search', search); } else { url.searchParams.delete('search'); }
+                   fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(res => res.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newTbody = doc.querySelector('tbody');
+                        if (newTbody) {
+                            document.querySelector('tbody').innerHTML = newTbody.innerHTML;
+                        }
+                    });
+               "
+               placeholder="Nom, référence..." 
+               class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
         
         <select name="category_id" class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
             <option value="">Toutes catégories</option>
@@ -125,8 +153,22 @@
                     @forelse($products as $product)
                     <tr class="hover:bg-gray-50/50 transition">
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="font-bold text-gray-900">{{ $product->name }}</div>
-                            <div class="text-[10px] text-gray-400">{{ $product->reference }}</div>
+                            <div class="flex items-center gap-3">
+                                {{-- Image miniature cliquable (Façon WhatsApp) --}}
+                                @if($product->image)
+                                    <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" 
+                                         class="w-10 h-10 rounded-xl object-cover border border-gray-100 shadow-sm cursor-pointer hover:opacity-80 transition transform hover:scale-105"
+                                         onclick="openImageModal('{{ asset('storage/' . $product->image) }}', '{{ addslashes($product->name) }}')">
+                                @else
+                                    <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-[10px] font-bold border border-gray-200">
+                                        IMG
+                                    </div>
+                                @endif
+                                <div>
+                                    <div class="font-bold text-gray-900">{{ $product->name }}</div>
+                                    <div class="text-[10px] text-gray-400">{{ $product->reference ?? 'Aucune référence' }}</div>
+                                </div>
+                            </div>
                         </td>
                         <td class="px-6 py-4 text-gray-500">{{ $product->category->name ?? '-' }}</td>
                         <td class="px-6 py-4 font-semibold text-gray-900">{{ number_format($product->selling_price, 0, ',', ' ') }} FCFA</td>
@@ -186,4 +228,35 @@
     </div>
 
 </div>
+
+{{-- Modale pour afficher l'image en grand (Style WhatsApp) --}}
+<div id="imageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden" onclick="closeImageModal()">
+    <div class="relative max-w-2xl mx-4 p-3 bg-white rounded-3xl shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
+        <button onclick="closeImageModal()" class="absolute top-4 right-4 z-10 bg-gray-900/60 hover:bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold transition">
+            &times;
+        </button>
+        <img id="modalImage" src="" alt="" class="w-full max-h-[75vh] object-contain rounded-2xl">
+        <div class="p-4 text-center">
+            <h3 id="modalTitle" class="text-sm font-bold text-gray-900"></h3>
+        </div>
+    </div>
+</div>
+
+{{-- Script JS pour gérer l'affichage de la modale --}}
+<script>
+    function openImageModal(imageUrl, title) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalTitle = document.getElementById('modalTitle');
+
+        modalImage.src = imageUrl;
+        modalTitle.textContent = title;
+        modal.classList.remove('hidden');
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.classList.add('hidden');
+    }
+</script>
 @endsection

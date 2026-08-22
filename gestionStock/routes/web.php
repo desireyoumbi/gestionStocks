@@ -7,18 +7,21 @@ use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\BoutiqueSettingsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\MovementController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Notification;
+use App\Models\StockMovement;
 
 /*
 |--------------------------------------------------------------------------
@@ -59,9 +62,9 @@ Route::middleware('guest')->group(function () {
 
 // ================== debut des routes securisees ===========================
 Route::middleware(['auth', 'check.password'])->group(function () {
-    
+
     // Ton tableau de bord
-     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // La gestion des utilisateurs (accessible uniquement si l'admin a le droit ET a changé son mdp)
     Route::get('/utilisateurs', [UserController::class, 'index'])->name('user.index');
@@ -72,7 +75,9 @@ Route::middleware(['auth', 'check.password'])->group(function () {
     Route::delete('/utilisateurs/{user}', [UserController::class, 'destroy'])->name('user.destroy');
 
     // ... Toutes tes autres pages de la boutique (stocks, ventes, etc.) iront ici aussi !
-
+    //produit
+    Route::get('/products/export-pdf', [App\Http\Controllers\ProductController::class, 'exportPdf'])->name('products.export-pdf');
+   
     // Routes Resource pour les fournisseurs (Génère automatiquement index, create, store, edit, update, destroy)
     Route::resource('suppliers', SupplierController::class);
     // Route Resource pour les produits (Génère automatiquement index, create, store, edit, update, destroy)
@@ -92,41 +97,24 @@ Route::middleware(['auth', 'check.password'])->group(function () {
     Route::patch('/commandes/{purchaseOrder}/recevoir', [PurchaseOrderController::class, 'receive'])->name('purchase_orders.receive');
     Route::post('/commandes/{purchaseOrder}/annuler', [PurchaseOrderController::class, 'cancel'])->name('purchase_orders.cancel');
 
-
-    // mouvements 
-    // // Liste des mouvements (avec recherche et filtres)
-    // Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');
-    // // Formulaire de création d'un mouvement
-    // Route::get('/movements/create', [MovementController::class, 'create'])->name('movements.create');
-    // // Enregistrement du nouveau mouvement//
-    // Route::post('/movements', [MovementController::class, 'store'])->name('movements.store');
-    // // Affichage des détails d'un mouvement spécifique
-    // Route::get('/movements/{movement}', [MovementController::class, 'show'])->name('movements.show');
-    // // Formulaire d'édition (modification du motif/date)
-    // Route::get('/movements/{movement}/edit', [MovementController::class, 'edit'])->name('movements.edit');
-    // // Mise à jour du mouvement
-    // Route::put('/movements/{movement}', [MovementController::class, 'update'])->name('movements.update');
-    // // Suppression / Annulation d'un mouvement (avec réajustement du stock)
-    // Route::delete('/movements/{movement}', [MovementController::class, 'destroy'])->name('movements.destroy');
-
     // Journal des mouvements (affichage du jour)
-// Journal des mouvements global
-Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');
+    // Journal des mouvements global
+    Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');
 
-// Page dédiée aux Ventes (Liste, Formulaire, Enregistrement, Suppression)
-Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
-Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
-Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
-Route::delete('/sales/{id}', [SaleController::class, 'destroy'])->name('sales.destroy');
-// Page dédiée aux Approvisionnements
-Route::get('/supplies/create', [SupplyController::class, 'create'])->name('supplies.create');
-Route::post('/supplies', [SupplyController::class, 'store'])->name('supplies.store');
+    // Page dédiée aux Ventes (Liste, Formulaire, Enregistrement, Suppression)
+    Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
+    Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
+    Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
+    Route::delete('/sales/{id}', [SaleController::class, 'destroy'])->name('sales.destroy');
+    // Page dédiée aux Approvisionnements
+    Route::get('/supplies/create', [SupplyController::class, 'create'])->name('supplies.create');
+    Route::post('/supplies', [SupplyController::class, 'store'])->name('supplies.store');
 
-// approvissionnement 
-Route::get('/supplies', [SupplyController::class, 'index'])->name('supplies.index');
-Route::get('/supplies/create', [SupplyController::class, 'create'])->name('supplies.create');
-Route::post('/supplies', [SupplyController::class, 'store'])->name('supplies.store');
-Route::delete('/supplies/{id}', [SupplyController::class, 'destroy'])->name('supplies.destroy');
+    // approvissionnement 
+    Route::get('/supplies', [SupplyController::class, 'index'])->name('supplies.index');
+    Route::get('/supplies/create', [SupplyController::class, 'create'])->name('supplies.create');
+    Route::post('/supplies', [SupplyController::class, 'store'])->name('supplies.store');
+    Route::delete('/supplies/{id}', [SupplyController::class, 'destroy'])->name('supplies.destroy');
 
     //restaurer ou supprimer 
     Route::get('/corbeille', [TrashController::class, 'index'])->name('trash.index');
@@ -138,8 +126,10 @@ Route::delete('/supplies/{id}', [SupplyController::class, 'destroy'])->name('sup
 
 // ==========  LE GROUPE DE SECOURS (Connecté, mais SANS le middleware check.password)
 Route::middleware(['auth'])->group(function () {
+
+ 
     Route::get('/changer-mot-de-passe-force', [ForcedPasswordController::class, 'showForm'])->name('password.change');
-    
+
     // Remets bien le -force ici pour que l'URL corresponde à ton formulaire
     Route::post('/changer-mot-de-passe-force', [ForcedPasswordController::class, 'update'])->name('password.update.forced');
 
@@ -147,7 +137,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     //deconnexion 
-    Route::post('/logout' ,[AuthController::class , 'logout'])->name('logout');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Gestion paramètres boutique
     Route::get('/settings/boutique', [BoutiqueSettingsController::class, 'index'])->name('settings.boutique');
@@ -162,5 +152,28 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/adjustments', [AdjustmentController::class, 'index'])->name('adjustments.index');
     Route::get('/adjustments/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
     Route::post('/adjustments', [AdjustmentController::class, 'store'])->name('adjustments.store');
+
+    //exportation 
+    Route::get('/users/export/pdf', [UserController::class, 'exportPdf'])->name('user.export.pdf');
+    Route::get('/suppliers/export/pdf', [SupplierController::class, 'exportPdf'])->name('supplier.export.pdf');
+
+    Route::get('supplies/export/day-pdf', [SupplyController::class, 'exportDayPdf'])->name('supplies.export.day.pdf');
+    Route::get('supplies/export/all-pdf', [SupplyController::class, 'exportAllPdf'])->name('supplies.export.all.pdf');
+
+    // Routes pour l'export PDF des ventes (basées sur les mouvements)
+    Route::get('/sales/export-pdf', [SaleController::class, 'exportPdf'])->name('sales.export.pdf');
+    Route::get('/sales/export-pdf/{date}', [SaleController::class, 'exportPdfByDate'])->name('sales.export.pdf.date');
+
+
+Route::get('/stock-movements', [StockMovementController::class, 'index'])->name('stock-movements.index');
+//pdf
+Route::get('/stock-movements/export-pdf', [StockMovementController::class, 'exportPdf'])->name('stock-movements.export-pdf');
+
+//depense 
+Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+    Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+     
+    
 });
 

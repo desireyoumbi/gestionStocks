@@ -23,6 +23,7 @@ class Product extends Model
         'boutique_id',
         'status',
         'description',
+        'image',
     ];
 
     protected $casts = [
@@ -55,14 +56,24 @@ class Product extends Model
     public function movements()
     {
         return $this->belongsToMany(Movement::class, 'movement_products')
-                    ->withPivot('qty')
-                    ->withTimestamps();
+            ->withPivot('qty')
+            ->withTimestamps();
     }
 
     public function purchaseOrders()
     {
         return $this->belongsToMany(PurchaseOrder::class, 'purchase_order_products')
-                    ->withPivot('qty', 'unit_price')
-                    ->withTimestamps();
+            ->withPivot('qty', 'unit_price')
+            ->withTimestamps();
+    }
+
+    public function suppliers()
+    {
+        return $this->belongsToMany(Supplier::class, 'product_supplier');
+    }
+
+    public function stockMovemnts()
+    {
+        return $this->hasMany(StockMovement::class);
     }
 }

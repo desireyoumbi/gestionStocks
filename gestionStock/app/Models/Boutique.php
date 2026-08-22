@@ -43,4 +43,15 @@ class Boutique extends Model
     {
         return $this->hasMany(Movement::class);
     }
+
+    public function stockMovemnts()
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class);
+    }
+
 }

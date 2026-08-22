@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SupplierController extends Controller
 {
@@ -12,34 +14,46 @@ class SupplierController extends Controller
      * Affiche la liste des fournisseurs de la boutique connectée avec option de recherche.
      */
     public function index(Request $request)
-{
-    if (Auth::user()->role === 'vendeur') {
-        return abort(403, "Vous n'êtes pas autorisé à voir cette page");
+    {
+        if (Auth::user()->role === 'vendeur') {
+            return abort(403, "Vous n'êtes pas autorisé à voir cette page");
+        }
+
+        $boutiqueId = Auth::user()->boutique_id;
+        $search = $request->input('search');
+
+        // MODIFICATION ICI : On charge la relation 'products' avec with()
+        $query = Supplier::with('products')->where('boutique_id', $boutiqueId);
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('phone', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhereHas('products', function($subQ) use ($search) {
+                      $subQ->where('name', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+
+        $suppliers = $query->latest()->paginate(10)->appends(['search' => $search]);
+
+        return view('suppliers.index', compact('suppliers', 'search'));
     }
 
-    $boutiqueId = Auth::user()->boutique_id;
-    $search = $request->input('search');
-
-    $query = Supplier::where('boutique_id', $boutiqueId);
-
-    if ($search) {
-        $query->where(function($q) use ($search) {
-            $q->where('name', 'LIKE', "%{$search}%")
-              ->orWhere('phone', 'LIKE', "%{$search}%")
-              ->orWhere('email', 'LIKE', "%{$search}%");
-        });
-    }
-
-    $suppliers = $query->latest()->paginate(10)->appends(['search' => $search]);
-
-    return view('suppliers.index', compact('suppliers', 'search'));
-}
     /**
      * Affiche le formulaire de création d'un fournisseur.
      */
     public function create()
     {
-        return view('suppliers.create');
+        if (Auth::user()->role === 'vendeur') {
+            return abort(403, "Vous n'êtes pas autorisé à voir cette page");
+        }
+
+        // MODIFICATION ICI : On récupère les produits de la boutique pour les afficher dans le formulaire
+        $products = Product::where('boutique_id', Auth::user()->boutique_id)->get();
+
+        return view('suppliers.create', compact('products'));
     }
 
     /**
@@ -47,22 +61,29 @@ class SupplierController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:9',
-            'email' => 'nullable|email|max:255',
-            'adresse'=> 'nullable|string|max:255',
-        ]);
-
-        // Si le vendeur parvient à passer, on s'assure qu'il ne touche pas au prix d'achat
         if (Auth::user()->role === 'vendeur') {
-            return abort(403,"vous n'etes pas autoriser a cree un fournisseur");
+            return abort(403, "Vous n'êtes pas autorisé à créer un fournisseur");
         }
 
-        // On associe automatiquement le fournisseur à la boutique de l'utilisateur connecté
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'adresse' => 'nullable|string|max:255',
+            'products' => 'nullable|array',
+            'products.*' => 'exists:products,id',
+        ]);
+
         $validated['boutique_id'] = Auth::user()->boutique_id;
         $validated['user_id'] = Auth::id();
-        Supplier::create($validated);
+
+        // Création du fournisseur
+        $supplier = Supplier::create($validated);
+
+        // MODIFICATION ICI : Synchronisation des produits sélectionnés
+        if ($request->has('products')) {
+            $supplier->products()->sync($request->products);
+        }
 
         return redirect()->route('suppliers.index')
                          ->with('succes', 'Fournisseur ajouté avec succès.');
@@ -73,19 +94,23 @@ class SupplierController extends Controller
      */
     public function show(Supplier $supplier)
     {
-        // Sécurité multi-boutique
         if ($supplier->boutique_id !== Auth::user()->boutique_id) {
             abort(404, "Fournisseur introuvable.");
         }
 
-         // Si le vendeur parvient à passer, on s'assure qu'il ne touche pas au prix d'achat
         if (Auth::user()->role === 'vendeur') {
-            return abort(403,"vous n'etes pas autoriser a voir cette page");
+            return abort(403, "Vous n'êtes pas autorisé à voir cette page");
         }
+
+        // Charger les produits liés si nécessaire
+        $supplier->load('products');
 
         return view('suppliers.show', compact('supplier'));
     }
 
+    /**
+     * Affiche le formulaire de modification d'un fournisseur.
+     */
     /**
      * Affiche le formulaire de modification d'un fournisseur.
      */
@@ -96,7 +121,16 @@ class SupplierController extends Controller
             abort(404, "Fournisseur introuvable.");
         }
 
-        return view('suppliers.edit', compact('supplier'));
+        // Sécurité rôle vendeur
+        if (Auth::user()->role === 'vendeur') {
+            return abort(403, "Vous n'êtes pas autorisé à voir cette page");
+        }
+
+        // Récupération de tous les produits de la boutique et chargement des relations
+        $products = Product::where('boutique_id', Auth::user()->boutique_id)->get();
+        $supplier->load('products');
+
+        return view('suppliers.edit', compact('supplier', 'products'));
     }
 
     /**
@@ -104,26 +138,32 @@ class SupplierController extends Controller
      */
     public function update(Request $request, Supplier $supplier)
     {
-        // Sécurité multi-boutique
         if ($supplier->boutique_id !== Auth::user()->boutique_id) {
             abort(404, "Fournisseur introuvable.");
         }
 
+        if (Auth::user()->role === 'vendeur') {
+            return abort(403, "Vous n'êtes pas autorisé à modifier des informations sur cette page");
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
             'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:255',
             'adresse' => 'nullable|string|max:500',
+            'products' => 'nullable|array',
+            'products.*' => 'exists:products,id',
         ]);
-
-         // Si le vendeur parvient à passer, on s'assure qu'il ne touche pas au prix d'achat
-        if (Auth::user()->role === 'vendeur') {
-            return abort(403,"vous n'etes pas autoriser a modifier des information sur cette page");
-        }
 
         $validated['updated_by'] = Auth::id();
         $supplier->update($validated);
+
+        // MODIFICATION ICI : Mise à jour (synchronisation) des produits associés
+        if ($request->has('products')) {
+            $supplier->products()->sync($request->products);
+        } else {
+            $supplier->products()->detach(); // Si aucun produit n'est coché, on retire tout
+        }
 
         return redirect()->route('suppliers.index')
                          ->with('succes', 'Fournisseur modifié avec succès.');
@@ -134,19 +174,26 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
-        // Sécurité multi-boutique
         if ($supplier->boutique_id !== Auth::user()->boutique_id) {
             abort(404, "Fournisseur introuvable.");
         }
 
-        // Sécurité supplémentaire : seuls les administrateurs peuvent supprimer
         if (Auth::user()->role !== 'administrateur') {
-            abort(403, "Vous n'avez pas l'autorisation de supprimer ce produit.");
+            abort(403, "Vous n'avez pas l'autorisation de supprimer ce fournisseur.");
         }
 
         $supplier->delete();
 
         return redirect()->route('suppliers.index')
                          ->with('succes', 'Fournisseur supprimé avec succès.');
+    }
+
+    public function exportPdf()
+    {
+        $suppliers = Supplier::with('products')->where('boutique_id', Auth::user()->boutique_id)->get();
+
+        $pdf = Pdf::loadView('suppliers.pdf', compact('suppliers'));
+
+        return $pdf->download('liste-fournisseurs-' . date('Y-m-d') . '.pdf');
     }
 }

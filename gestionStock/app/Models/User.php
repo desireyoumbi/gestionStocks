@@ -96,4 +96,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notification::class)->whereNull('read_at')->latest();
     }
+
+    public function stockMovemnts()
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class);
+    }
 }

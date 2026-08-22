@@ -46,12 +46,30 @@
                 @error('email') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
             </div>
 
-            {{-- Adresse géographique --}}
+            {{-- Adresse géographique (Corrigé en 'adresse') --}}
             <div>
-                <label for="address" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Adresse</label>
-                <textarea name="address" id="address" rows="3" 
-                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition resize-none">{{ old('address', $supplier->address) }}</textarea>
-                @error('address') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
+                <label for="adresse" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Adresse</label>
+                <textarea name="adresse" id="adresse" rows="3" 
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition resize-none">{{ old('adresse', $supplier->adresse) }}</textarea>
+                @error('adresse') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
+            </div>
+
+            {{-- Produits livrés (Cases à cocher) --}}
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Produits livrés par ce fournisseur</label>
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 max-h-48 overflow-y-auto space-y-2">
+                    @forelse($products as $product)
+                        <label class="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition cursor-pointer">
+                            <input type="checkbox" name="products[]" value="{{ $product->id }}" 
+                                {{ in_array($product->id, old('products', $supplier->products->pluck('id')->toArray())) ? 'checked' : '' }}
+                                class="w-4 h-4 text-amber-500 bg-slate-100 border-slate-300 rounded focus:ring-amber-500/20 focus:ring-2">
+                            <span class="text-sm font-medium text-slate-700">{{ $product->name }}</span>
+                        </label>
+                    @empty
+                        <p class="text-xs text-slate-400 italic text-center py-2">Aucun produit disponible dans la boutique.</p>
+                    @endforelse
+                </div>
+                @error('products') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
             </div>
 
             {{-- Actions --}}

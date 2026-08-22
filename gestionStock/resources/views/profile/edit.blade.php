@@ -1,98 +1,113 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-4xl mx-auto space-y-6">
-    <!-- En-tête -->
-    <div>
-        <h1 class="text-2xl font-bold text-white">Mon Profil</h1>
-        <p class="text-sm text-gray-400">Consultez vos statistiques et gérez vos paramètres personnels.</p>
+<div class="space-y-8 max-w-4xl mx-auto">
+
+    {{-- EN-TÊTE DE PAGE AVEC STATS --}}
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Mon Profil</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Membre depuis {{ $ancienneté }} • Rôle : <span class="uppercase font-bold text-amber-500">{{ $user->role }}</span></p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-950 px-5 py-3 rounded-2xl shadow-md border border-slate-100 dark:border-gray-800 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+                📊
+            </div>
+            <div>
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mouvements gérés</p>
+                <p class="text-lg font-black text-slate-900 dark:text-white">{{ $stats['total_movements'] ?? 0 }}</p>
+            </div>
+        </div>
     </div>
 
+    {{-- MESSAGE FLASH --}}
     @if(session('success'))
-        <div class="bg-green-500/10 border border-green-500 text-green-400 px-4 py-3 rounded-xl text-sm">
-            {{ session('success') }}
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-2xl text-sm font-medium flex items-center shadow-md" role="alert">
+            <span class="mr-2">✅</span> {{ session('success') }}
         </div>
     @endif
 
-    <!-- Grille : Statistiques & Infos rapides -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <!-- Rôle -->
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <div class="text-xs text-gray-400 uppercase font-semibold mb-1">Rôle dans le système</div>
-            <div class="text-lg font-bold text-amber-500 capitalize">{{ $user->role }}</div>
-        </div>
-        <!-- Ancienneté -->
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <div class="text-xs text-gray-400 uppercase font-semibold mb-1">Ancienneté</div>
-            <div class="text-lg font-bold text-white">Membre depuis {{ $ancienneté }}</div>
-        </div>
-        <!-- Mouvements -->
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <div class="text-xs text-gray-400 uppercase font-semibold mb-1">
-                {{ $user->role === 'vendeur' ? 'Mes mouvements' : 'Mouvements boutique' }}
-            </div>
-            <div class="text-lg font-bold text-white">{{ $stats['total_movements'] }} enregistrement(s)</div>
-        </div>
-    </div>
+    {{-- FORMULAIRE UNIQUE DE MISE À JOUR --}}
+    <form method="POST" action="{{ route('profile.update') }}" class="space-y-6">
+        @csrf
+        @method('PATCH')
 
-    <!-- Formulaire Modification -->
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <form action="{{ route('profile.update') }}" method="POST" class="space-y-4">
-            @csrf
-            @method('PATCH')
+        {{-- SECTION 1 : INFORMATIONS PERSONNELLES --}}
+        <div class="bg-white dark:bg-gray-950 p-7 rounded-3xl shadow-xl border border-slate-100 dark:border-gray-800 space-y-5">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Informations personnelles</h2>
 
-            <div>
-                <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Nom complet</label>
-                <input type="text" name="name" value="{{ old('name', $user->name) }}" 
-                       class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500">
-                @error('name') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
-            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {{-- Nom --}}
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nom complet</label>
+                    <input type="text" name="name" value="{{ old('name', $user->name) }}" required 
+                        class="w-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 transition">
+                    @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
 
-            <div>
-                <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">
-                    Adresse Email 
-                    @if($user->role !== 'administrateur') 
-                        <span class="text-gray-500 lowercase font-normal">(non modifiable)</span> 
-                    @endif
-                </label>
-                <input type="email" name="email" value="{{ old('email', $user->email) }}" 
-                       {{ $user->role !== 'administrateur' ? 'disabled' : '' }}
-                       class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500 {{ $user->role !== 'administrateur' ? 'opacity-60 cursor-not-allowed' : '' }}">
-                @error('email') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
-            </div>
-
-            <div class="pt-4 border-t border-gray-800">
-                <h3 class="text-sm font-bold text-white mb-3">Changer le mot de passe (optionnel)</h3>
-                
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Mot de passe actuel</label>
-                        <input type="password" name="current_password" 
-                               class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500">
-                        @error('current_password') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Nouveau mot de passe</label>
-                        <input type="password" name="password" 
-                               class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500">
-                        @error('password') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Confirmer le nouveau mot de passe</label>
-                        <input type="password" name="password_confirmation" 
-                               class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500">
-                    </div>
+                {{-- Téléphone --}}
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Numéro de téléphone</label>
+                    <input type="text" name="telephone" value="{{ old('telephone', $user->telephone) }}" placeholder="Ex: +237 6..."
+                        class="w-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 transition">
+                    @error('telephone') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
             </div>
 
-            <div class="flex justify-end pt-4">
-                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-lg shadow-amber-500/20">
-                    Enregistrer les modifications
-                </button>
+            {{-- Email --}}
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Adresse Email 
+                    @if($user->role !== 'administrateur') 
+                        <span class="text-slate-400 font-normal lowercase">(réservé à l'administrateur)</span> 
+                    @endif
+                </label>
+                <input type="email" name="email" value="{{ old('email', $user->email) }}" 
+                    {{ $user->role !== 'administrateur' ? 'disabled' : 'required' }}
+                    class="w-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-white {{ $user->role !== 'administrateur' ? 'opacity-60 cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500' }} transition">
+                @error('email') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
-        </form>
-    </div>
+        </div>
+
+        {{-- SECTION 2 : SÉCURITÉ / MOT DE PASSE (OPTIONNEL) --}}
+        <div class="bg-white dark:bg-gray-950 p-7 rounded-3xl shadow-xl border border-slate-100 dark:border-gray-800 space-y-5">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Modifier le mot de passe</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Laissez ces champs vides si vous ne souhaitez pas changer de mot de passe.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Mot de passe actuel</label>
+                <input type="password" name="current_password" placeholder="••••••••"
+                    class="w-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 transition">
+                @error('current_password') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nouveau mot de passe</label>
+                    <input type="password" name="password" placeholder="••••••••"
+                        class="w-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 transition">
+                    @error('password') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Confirmer le mot de passe</label>
+                    <input type="password" name="password_confirmation" placeholder="••••••••"
+                        class="w-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 transition">
+                </div>
+            </div>
+        </div>
+
+        {{-- BOUTON DE VALIDATION GLOBAL --}}
+        <div class="flex justify-end">
+            <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-900 text-sm font-bold px-8 py-3.5 rounded-xl shadow-md hover:shadow-lg transition">
+                Enregistrer toutes les modifications
+            </button>
+        </div>
+
+    </form>
+
 </div>
 @endsection

@@ -15,13 +15,20 @@ class NotificationController extends Controller
     {
         $userId = Auth::id();
 
+
+
+        // Supprimer automatiquement les notifications lues qui datent de plus d'un jour
+        \App\Models\Notification::whereNotNull('read_at')
+            ->where('created_at', '<', now()->subDay())
+            ->delete();
+            
         // Récupérer les notifications de l'utilisateur connecté avec pagination
         $notifications = Notification::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
         $totalNotifications = Notification::where('user_id', $userId)->count();
-        
+
         // Messages non lus (basé sur read_at qui est null)
         $unreadMessages = Notification::where('user_id', $userId)
             ->whereNull('read_at')
@@ -36,7 +43,7 @@ class NotificationController extends Controller
     public function markAsRead($id)
     {
         $notification = Notification::where('user_id', Auth::id())->findOrFail($id);
-        
+
         $notification->update([
             'read_at' => now()
         ]);

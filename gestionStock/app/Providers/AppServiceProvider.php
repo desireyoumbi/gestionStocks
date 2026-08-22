@@ -1,9 +1,9 @@
 <?php
-
 namespace App\Providers;
 
-use App\Models\Product;
-use App\Observers\ProductObserver;
+use App\Models\Notification;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-       //
+        View::composer('*', function ($view) {
+            if (Auth::check()) {
+                $unreadCount = Notification::where('user_id', Auth::id())->whereNull('read_at')->count();
+                $view->with('unreadCountGlobal', $unreadCount);
+            }
+        });
     }
 }
