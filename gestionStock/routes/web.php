@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\BoutiqueSettingsController;
+use App\Http\Controllers\CashMovementController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\StockScanController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\TrashController;
@@ -58,6 +60,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 });
 
+Route::get('/reports/annual', [DashboardController::class, 'annualReport'])->name('reports.annual')->middleware('auth');
+
 // ================== fin des routes libres ================================
 
 // ================== debut des routes securisees ===========================
@@ -77,7 +81,7 @@ Route::middleware(['auth', 'check.password'])->group(function () {
     // ... Toutes tes autres pages de la boutique (stocks, ventes, etc.) iront ici aussi !
     //produit
     Route::get('/products/export-pdf', [App\Http\Controllers\ProductController::class, 'exportPdf'])->name('products.export-pdf');
-   
+
     // Routes Resource pour les fournisseurs (Génère automatiquement index, create, store, edit, update, destroy)
     Route::resource('suppliers', SupplierController::class);
     // Route Resource pour les produits (Génère automatiquement index, create, store, edit, update, destroy)
@@ -127,7 +131,7 @@ Route::middleware(['auth', 'check.password'])->group(function () {
 // ==========  LE GROUPE DE SECOURS (Connecté, mais SANS le middleware check.password)
 Route::middleware(['auth'])->group(function () {
 
- 
+
     Route::get('/changer-mot-de-passe-force', [ForcedPasswordController::class, 'showForm'])->name('password.change');
 
     // Remets bien le -force ici pour que l'URL corresponde à ton formulaire
@@ -165,15 +169,25 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/sales/export-pdf/{date}', [SaleController::class, 'exportPdfByDate'])->name('sales.export.pdf.date');
 
 
-Route::get('/stock-movements', [StockMovementController::class, 'index'])->name('stock-movements.index');
-//pdf
-Route::get('/stock-movements/export-pdf', [StockMovementController::class, 'exportPdf'])->name('stock-movements.export-pdf');
+    Route::get('/stock-movements', [StockMovementController::class, 'index'])->name('stock-movements.index');
+    //pdf
+    Route::get('/stock-movements/export-pdf', [StockMovementController::class, 'exportPdf'])->name('stock-movements.export-pdf');
 
-//depense 
-Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+    //depense 
+    Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
     Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
     Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
-     
-    
-});
+    Route::post('/cash/fund', [CashMovementController::class, 'storeFund'])->name('cash.fund.store');
 
+    //
+    // Afficher la page du scanner
+    Route::get('/stock/scan', [StockScanController::class, 'index'])->name('stock.scan.index');
+
+    // Traiter le code scanné
+    Route::post('/stock/scan', [StockScanController::class, 'processScan'])->name('stock.scan.process');
+
+    //
+    Route::get('/stock/scan', [StockScanController::class, 'index'])->name('stock.scan.index');
+    Route::post('/stock/scan/process', [StockScanController::class, 'processScan'])->name('stock.scan.process');
+    Route::post('/stock/movement/store', [StockScanController::class, 'storeMovement'])->name('stock.movement.store');
+});

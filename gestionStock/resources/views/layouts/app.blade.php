@@ -64,39 +64,64 @@
                             <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
                             Catégories
                         </a>
-                        <a href="{{ route('suppliers.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('suppliers*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                            Fournisseurs
-                        </a>
+
+                        <!-- MASQUÉ POUR LE VENDEUR : Fournisseurs -->
+                        @if(Auth::user()->role !== 'vendeur')
+                            <a href="{{ route('suppliers.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('suppliers*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                Fournisseurs
+                            </a>
+                        @endif
+
                         <a href="{{ route('movements.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('movements*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
                             <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                             Mouvements
                         </a>
-                        <!-- Module Dépenses ajouté ici -->
-                        <a href="{{ route('expenses.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('expenses*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                            Dépenses
-                        </a>
-                        <a href="{{ route('stock-movements.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('stock-movements*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Historique
-                        </a>
+
+                        <!-- MASQUÉ POUR LE VENDEUR : Dépenses -->
+                        @if(Auth::user()->role !== 'vendeur')
+                            <a href="{{ route('expenses.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('expenses*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                Dépenses
+                            </a>
+                        @endif
+
+                        <!-- MASQUÉ POUR LE VENDEUR : Historique -->
+                        @if(Auth::user()->role !== 'vendeur')
+                            <a href="{{ route('stock-movements.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('stock-movements*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                Historique
+                            </a>
+                        @endif
+
                         <a href="{{ route('adjustments.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('adjustments*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
                             <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             Ajustements
                         </a>
-                        <a href="{{ route('user.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('user*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                            Utilisateurs
-                        </a>
-                        <a href="{{ route('settings.boutique') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('settings*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756.2924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
-                            Paramètres
-                        </a>
-                        <a href="{{ route('trash.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('trash*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Corbeille
-                        </a>
+
+                        <!-- VISIBLE UNIQUEMENT POUR L'ADMINISTRATEUR -->
+                        @if(Auth::user()->role === 'administrateur')
+                            <a href="{{ route('user.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('user*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                Utilisateurs
+                            </a>
+                        @endif
+
+                        <!-- MASQUÉ POUR LE VENDEUR : Paramètres -->
+                        @if(Auth::user()->role !== 'vendeur')
+                            <a href="{{ route('settings.boutique') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('settings*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756.2924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
+                                Paramètres
+                            </a>
+                        @endif
+
+                        <!-- VISIBLE UNIQUEMENT POUR L'ADMINISTRATEUR -->
+                        @if(Auth::user()->role === 'administrateur')
+                            <a href="{{ route('trash.index') }}" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition text-sm font-medium {{ request()->routeIs('trash*') ? 'bg-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                Corbeille
+                            </a>
+                        @endif
                     </nav>
                 </div>
 
@@ -121,12 +146,20 @@
                         <h1 class="text-base font-bold text-gray-900 dark:text-white">@yield('header_title', 'Tableau de bord')</h1>
                     </div>
 
-                    <!-- DROITE DU HEADER : Notifications & Profil -->
+                    <!-- DROITE DU HEADER : Scan, Notifications & Profil -->
                     <div class="flex items-center gap-3">
                         @php
                             $unreadCount = \App\Models\Notification::where('user_id', Auth::id())->whereNull('read_at')->count();
                             $outOfStockCount = \App\Models\Product::where('boutique_id', Auth::user()->boutique_id ?? null)->where('quantity', 0)->count();
                         @endphp
+
+                        <!-- Bouton d'accès rapide au Scan/Douchette -->
+                        <a href="{{ route('stock.scan.index') }}" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 text-gray-900 hover:bg-amber-400 transition text-xs font-bold shadow-md shadow-amber-500/10" title="Scan rapide / Mode Douchette">
+                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                            <span class="hidden md:inline">Scan & Stock</span>
+                        </a>
 
                         @if($outOfStockCount > 0)
                             <!-- Bouton d'alerte manuel -->
@@ -171,10 +204,12 @@
                                     <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                     Mon Profil
                                 </a>
-                                <a href="{{ route('settings.boutique') }}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900 transition">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756.2924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
-                                    Paramètres
-                                </a>
+                                @if(Auth::user()->role !== 'vendeur')
+                                    <a href="{{ route('settings.boutique') }}" class="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900 transition">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756.2924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
+                                        Paramètres
+                                    </a>
+                                @endif
                                 <div class="h-px bg-gray-100 dark:bg-gray-900 my-1"></div>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
@@ -187,6 +222,24 @@
                         </div>
                     </div>
                 </header>
+
+                <!-- BLOC DES MESSAGES FLASH (Succès / Erreur) -->
+                <div class="px-6 pt-4 shrink-0">
+                    @if(session('success'))
+                        <div class="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-sm">
+                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>{{ session('success') }}</span>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="flex items-center gap-3 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold shadow-sm">
+                            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <span>{{ session('error') }}</span>
+                        </div>
+                    @endif
+                </div>
+
                 <div class="flex-1 overflow-y-auto p-6 lg:p-8">
                     @yield('content')
                 </div>

@@ -4,13 +4,13 @@
 @section('header_title', 'Nouvel Approvisionnement')
 
 @section('content')
-<div class="max-w-3xl mx-auto">
+<div class="max-w-3xl mx-auto relative">
     <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
         
         <form action="{{ route('supplies.store') }}" method="POST" class="space-y-6">
             @csrf
 
-            <!-- Erreurs -->
+            <!-- Erreurs classiques -->
             @if($errors->any())
                 <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-semibold">
                     <ul class="list-disc pl-4 space-y-1">
@@ -77,6 +77,35 @@
             </div>
         </form>
     </div>
+
+    <!-- MODAL FIXE EN CAS D'ERREUR DE CAISSE INSUFFISANTE -->
+    @if(session('cash_error'))
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div class="bg-white dark:bg-gray-900 border border-rose-500/30 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 text-center animate-in fade-in zoom-in duration-200">
+                <div class="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold shadow-inner">
+                    ⚠️
+                </div>
+                <div>
+                    <h3 class="text-lg font-black text-slate-900 dark:text-white tracking-tight">Fonds insuffisants en caisse</h3>
+                    <p class="text-xs text-slate-500 dark:text-gray-400 mt-2 leading-relaxed">
+                        {{ session('cash_error') }}
+                    </p>
+                </div>
+                <div class="flex flex-col gap-3 pt-2">
+                    <!-- Lien de redirection vers la page de gestion/ajustement de la caisse (ex: reports.annual ou ta route de caisse) -->
+                    <a href="{{ route('reports.annual') }}" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2">
+                        <span>Ajuster la caisse & ajouter des fonds</span>
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </a>
+                    <button type="button" onclick="this.closest('.fixed').style.display='none'" class="w-full py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs rounded-xl transition">
+                        Fermer et modifier ma commande
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 <script>

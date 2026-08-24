@@ -106,4 +106,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Expense::class);
     }
+
+    // Dans le modèle Boutique.php
+    public function cashMovements()
+    {
+        return $this->hasMany(CashMovement::class);
+    }
 }

@@ -54,4 +54,18 @@ class Boutique extends Model
         return $this->hasMany(Expense::class);
     }
 
+    // Dans le modèle Boutique.php
+    public function cashMovements()
+    {
+        return $this->hasMany(CashMovement::class);
+    }
+
+    // argent en caisse
+    public function getCashBalance()
+    {
+        $totalIn = $this->cashMovements()->where('type', 'in')->sum('amount');
+        $totalOut = $this->cashMovements()->where('type', 'out')->sum('amount');
+
+        return $totalIn - $totalOut;
+    }
 }

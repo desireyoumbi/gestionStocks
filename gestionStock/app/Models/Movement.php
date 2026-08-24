@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +17,7 @@ class Movement extends Model
         'user_id',
         'purchase_order_id',
         'updated_by',
+        'client_phone', // <- Ajouté ici
     ];
 
     protected $casts = [

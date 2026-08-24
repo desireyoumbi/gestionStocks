@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Movement;
 use App\Models\StockMovement;
+use App\Models\CashMovement; // Import du modèle de caisse
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -94,35 +95,43 @@ class SaleController extends Controller
     }
 
     /**
-     * Enregistre la vente et met à jour le stock.
+     * Enregistre la vente, met à jour le stock, crédite la caisse et redirige vers l'index avec la modale.
      */
     public function store(Request $request)
     {
         $request->validate([
             'motif' => 'nullable|string|max:255',
+            'client_phone' => 'nullable|string|max:20',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
-        try {
-            DB::transaction(function () use ($request) {
-                $boutiqueId = auth()->user()->boutique_id ?? 1;
+        $movementId = null;
 
-                // 1. Créer le mouvement global (la facture de vente globale)
+        try {
+            DB::transaction(function () use ($request, &$movementId) {
+                $user = Auth::user();
+                $boutiqueId = $user->boutique_id ?? 1;
+                $totalSaleAmount = 0;
+
+                // 1. Créer le mouvement global de vente
                 $movement = Movement::create([
                     'boutique_id' => $boutiqueId,
                     'type' => 'sortie',
                     'date' => now(),
-                    'user_id' => Auth::id(),
+                    'user_id' => $user->id,
                     'motif' => $request->motif ?? 'Vente',
+                    'client_phone' => $request->client_phone,
                 ]);
+
+                // Stocker l'ID pour le récupérer proprement hors de la transaction
+                $movementId = $movement->id;
 
                 // 2. Parcourir chaque produit du panier
                 foreach ($request->items as $item) {
                     $product = Product::lockForUpdate()->find($item['product_id']);
 
-                    // Vérification du stock disponible
                     if ($product->quantity < $item['quantity']) {
                         throw new \Exception("Stock insuffisant pour le produit : {$product->name}. Stock actuel : {$product->quantity}");
                     }
@@ -131,35 +140,55 @@ class SaleController extends Controller
                     $quantitySold = $item['quantity'];
                     $newStock = $oldStock - $quantitySold;
 
-                    // Attacher dans la table pivot
+                    $totalSaleAmount += $quantitySold * $product->selling_price;
+
+                    // Attacher dans la table pivot movement_products
                     $movement->products()->attach($product->id, ['qty' => $quantitySold]);
 
                     // Décrémenter le stock
                     $product->update(['quantity' => $newStock]);
 
-                    // --- ENREGISTREMENT DANS L'HISTORIQUE GLOBAL (StockMovement) ---
+                    // Historique global des stocks
                     StockMovement::create([
                         'boutique_id' => $boutiqueId,
                         'product_id'  => $product->id,
-                        'user_id'     => Auth::id(),
-                        'type'        => 'sale', // ou 'sortie' selon tes conventions d'historique
+                        'user_id'     => $user->id,
+                        'type'        => 'sale',
                         'quantity'    => $quantitySold,
                         'old_stock'   => $oldStock,
                         'new_stock'   => $newStock,
                         'reason'      => $request->motif ?? 'Vente de produits',
                     ]);
                 }
+
+                // 3. Enregistrer l'entrée dans la caisse de manière sécurisée
+                CashMovement::create([
+                    'boutique_id' => $boutiqueId,
+                    'user_id' => $user->id,
+                    'type' => 'in',
+                    'category' => 'sale',
+                    'amount' => $totalSaleAmount,
+                    'motif' => $request->motif ?? 'Encaissement vente #' . $movement->id,
+                    'is_unjustified' => false,
+                ]);
             });
         } catch (\Exception $e) {
             return back()->withInput()->withErrors(['quantity' => $e->getMessage()]);
         }
 
+        // 4. Charger proprement le mouvement avec ses produits pour la modale WhatsApp
+        $freshMovement = Movement::with('products')->findOrFail($movementId);
+
+        // Redirection directe vers la page INDEX (avec les données pour déclencher la modale si besoin sur l'index)
         return redirect()->route('sales.index')
-                         ->with('success', 'Vente enregistrée avec succès.');
+                         ->with([
+                             'success' => 'Vente et encaissement enregistrés avec succès.',
+                             'success_sale' => $freshMovement
+                         ]);
     }
 
     /**
-     * Annule une vente (supprime le mouvement et restitue le stock).
+     * Annule une vente (supprime le mouvement, restitue le stock et supprime l'entrée de caisse associée).
      */
     public function destroy($id)
     {
@@ -180,7 +209,7 @@ class SaleController extends Controller
                     'boutique_id' => $sale->boutique_id,
                     'product_id'  => $product->id,
                     'user_id'     => Auth::id(),
-                    'type'        => 'adjustment', // Entrée par annulation
+                    'type'        => 'adjustment',
                     'quantity'    => $pivotQty,
                     'old_stock'   => $oldStock,
                     'new_stock'   => $newStock,
@@ -188,11 +217,18 @@ class SaleController extends Controller
                 ]);
             }
 
+            // Supprimer l'encaissement correspondant dans la caisse s'il existe
+            CashMovement::where('boutique_id', $sale->boutique_id)
+                ->where('category', 'sale')
+                ->where('type', 'in')
+                ->where('motif', 'like', '%vente #' . $sale->id . '%')
+                ->delete();
+
             // Supprimer le mouvement de vente global
             $sale->delete();
         });
 
-        return back()->with('success', 'Vente annulée et stock restitué avec succès.');
+        return back()->with('success', 'Vente annulée, stock restitué et caisse mise à jour avec succès.');
     }
 
     public function exportPdf()

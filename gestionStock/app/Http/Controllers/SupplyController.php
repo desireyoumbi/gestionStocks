@@ -7,6 +7,7 @@ use App\Models\Movement;
 use App\Models\Supplier;
 use App\Models\PurchaseOrder;
 use App\Models\StockMovement;
+use App\Models\CashMovement;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -75,7 +76,7 @@ class SupplyController extends Controller
     }
 
     /**
-     * Affiche le formulaire d'approvisionnement (avec la liste des fournisseurs et des produits).
+     * Affiche le formulaire d'approvisionnement.
      */
     public function create()
     {
@@ -87,7 +88,7 @@ class SupplyController extends Controller
     }
 
     /**
-     * Enregistre la commande future, crée le mouvement d'entrée et augmente le stock.
+     * Enregistre la commande, crée le mouvement, met à jour le stock et la caisse.
      */
     public function store(Request $request)
     {
@@ -100,10 +101,28 @@ class SupplyController extends Controller
             'products.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request) {
-            $boutiqueId = Auth::user()->boutique_id;
+        $user = Auth::user();
+        $boutique = $user->boutique; 
 
-            // 1. Création de la Commande Future (PurchaseOrder)
+        // 1. Calculer le montant total de l'approvisionnement
+        $totalAmount = 0;
+        foreach ($request->products as $item) {
+            $totalAmount += $item['qty'] * $item['unit_price'];
+        }
+
+        // 2. Vérifier le solde de la caisse et bloquer via la clé 'cash_error' si insuffisant
+        $currentCashBalance = $boutique ? $boutique->getCashBalance() : 0;
+
+        if ($totalAmount > $currentCashBalance) {
+            return redirect()->back()
+                ->withInput()
+                ->with('cash_error', 'Opération bloquée : Fonds insuffisants en caisse (' . number_format($currentCashBalance, 0, ',', ' ') . ' FCFA disponibles pour un montant requis de ' . number_format($totalAmount, 0, ',', ' ') . ' FCFA). Veuillez ajuster la caisse.');
+        }
+
+        DB::transaction(function () use ($request, $user, $totalAmount) {
+            $boutiqueId = $user->boutique_id;
+
+            // 3. Création de la Commande Future (PurchaseOrder)
             $purchaseOrder = PurchaseOrder::create([
                 'supplier_id' => $request->supplier_id,
                 'boutique_id' => $boutiqueId,
@@ -111,7 +130,7 @@ class SupplyController extends Controller
                 'status' => 'recue',
             ]);
 
-            // 2. Enregistrer le mouvement d'entrée lié à cette commande future
+            // 4. Enregistrer le mouvement d'entrée
             $movement = Movement::create([
                 'boutique_id' => $boutiqueId,
                 'type' => 'entree',
@@ -121,35 +140,30 @@ class SupplyController extends Controller
                 'motif' => $request->motif ?? 'Approvisionnement stock via fournisseur',
             ]);
 
-            // 3. Associer les produits à la commande future ET au mouvement
+            // 5. Associer les produits et mettre à jour le stock
             foreach ($request->products as $item) {
                 $productId = $item['id'];
                 $qty = $item['qty'];
                 $unitPrice = $item['unit_price'];
 
-                // Liaison dans la table pivot purchase_order_products
                 $purchaseOrder->products()->attach($productId, [
                     'qty' => $qty,
                     'unit_price' => $unitPrice,
                 ]);
 
-                // Liaison dans la table pivot movement_products
                 $movement->products()->attach($productId, [
                     'qty' => $qty,
                 ]);
 
-                // 4. Récupérer le produit avec verrouillage pour mise à jour sécurisée
                 $product = Product::lockForUpdate()->find($productId);
                 $oldStock = $product->quantity;
                 $newStock = $oldStock + $qty;
 
-                // Incrémenter le stock et mettre à jour le prix d'achat
                 $product->update([
                     'quantity' => $newStock,
                     'purchase_price' => $unitPrice
                 ]);
 
-                // --- ENREGISTREMENT DANS L'HISTORIQUE GLOBAL (StockMovement) ---
                 StockMovement::create([
                     'boutique_id' => $boutiqueId,
                     'product_id'  => $product->id,
@@ -160,43 +174,179 @@ class SupplyController extends Controller
                     'new_stock'   => $newStock,
                     'reason'      => $request->motif ?? 'Approvisionnement fournisseur',
                 ]);
-
-                // Nettoyage des alertes de stock si le stock dépasse le seuil
-                if ($newStock > $product->alert_threshold) {
-                    \App\Models\Notification::where('boutique_id', $boutiqueId)
-                        ->where('title', 'Stock critique')
-                        ->where('message', 'like', "%{$product->name}%")
-                        ->delete();
-                }
             }
+
+            // 6. Enregistrer la sortie d'argent dans la caisse
+            CashMovement::create([
+                'boutique_id' => $boutiqueId,
+                'user_id' => Auth::id(),
+                'type' => 'out',
+                'category' => 'restock',
+                'amount' => $totalAmount,
+                'motif' => $request->motif ?? 'Approvisionnement stock fournisseur #' . $purchaseOrder->id,
+                'is_unjustified' => false,
+            ]);
         });
 
         return redirect()->route('supplies.index')
-                         ->with('success', 'Approvisionnement et commande fournisseur enregistrés avec succès.');
+                         ->with('success', 'Approvisionnement enregistré avec succès.');
     }
 
     /**
-     * Annule un approvisionnement (retire la quantité du stock, supprime le mouvement et la commande associée).
+     * Affiche le formulaire de modification.
+     */
+    public function edit($id)
+    {
+        $boutiqueId = Auth::user()->boutique_id;
+        $supply = Movement::with(['products', 'purchaseOrder'])->where('type', 'entree')->where('boutique_id', $boutiqueId)->findOrFail($id);
+        $products = Product::where('boutique_id', $boutiqueId)->get();
+        $suppliers = Supplier::where('boutique_id', $boutiqueId)->get();
+
+        return view('supplies.edit', compact('supply', 'products', 'suppliers'));
+    }
+
+    /**
+     * Met à jour un approvisionnement existant en gérant l'impact sur le stock et la caisse.
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'motif' => 'nullable|string|max:255',
+            'products' => 'required|array|min:1',
+            'products.*.id' => 'required|exists:products,id',
+            'products.*.qty' => 'required|integer|min:1',
+            'products.*.unit_price' => 'required|numeric|min:0',
+        ]);
+
+        $boutiqueId = Auth::user()->boutique_id;
+        $supply = Movement::where('type', 'entree')->where('boutique_id', $boutiqueId)->findOrFail($id);
+
+        // 1. Calculer le nouveau montant total demandé
+        $newTotalAmount = 0;
+        foreach ($request->products as $item) {
+            $newTotalAmount += $item['qty'] * $item['unit_price'];
+        }
+
+        // 2. Calculer l'ancien montant qui avait été débité de la caisse
+        $oldTotalAmount = 0;
+        foreach ($supply->products as $prod) {
+            $oldTotalAmount += $prod->pivot->qty * $prod->pivot->unit_price; 
+        }
+
+        // 3. Vérifier si la caisse peut supporter la différence
+        $boutique = Auth::user()->boutique;
+        $currentCashBalance = $boutique ? $boutique->getCashBalance() : 0;
+        
+        $projectedBalance = $currentCashBalance + $oldTotalAmount - $newTotalAmount;
+
+        if ($projectedBalance < 0) {
+            return redirect()->back()
+                ->withInput()
+                ->with('cash_error', 'Modification bloquée : Fonds insuffisants en caisse pour couvrir ce nouveau montant (' . number_format($newTotalAmount, 0, ',', ' ') . ' FCFA). Veuillez ajuster la caisse.');
+        }
+
+        DB::transaction(function () use ($request, $supply, $newTotalAmount, $boutiqueId) {
+            // A. Annuler l'ancien impact sur les stocks
+            foreach ($supply->products as $product) {
+                $qtyOld = $product->pivot->qty;
+                $product->decrement('quantity', $qtyOld);
+            }
+
+            // B. Mettre à jour la commande associée
+            if ($supply->purchase_order_id) {
+                $purchaseOrder = PurchaseOrder::find($supply->purchase_order_id);
+                if ($purchaseOrder) {
+                    $purchaseOrder->update(['supplier_id' => $request->supplier_id]);
+                    $purchaseOrder->products()->detach();
+                    
+                    foreach ($request->products as $item) {
+                        $purchaseOrder->products()->attach($item['id'], [
+                            'qty' => $item['qty'],
+                            'unit_price' => $item['unit_price'],
+                        ]);
+                    }
+                }
+            }
+
+            // C. Mettre à jour le mouvement d'entrée
+            $supply->update(['motif' => $request->motif]);
+            $supply->products()->detach();
+
+            foreach ($request->products as $item) {
+                $productId = $item['id'];
+                $qty = $item['qty'];
+                $unitPrice = $item['unit_price'];
+
+                $supply->products()->attach($productId, ['qty' => $qty]);
+
+                $product = Product::lockForUpdate()->find($productId);
+                $oldStock = $product->quantity;
+                $newStock = $oldStock + $qty;
+
+                $product->update([
+                    'quantity' => $newStock,
+                    'purchase_price' => $unitPrice
+                ]);
+
+                StockMovement::create([
+                    'boutique_id' => $boutiqueId,
+                    'product_id'  => $product->id,
+                    'user_id'     => Auth::id(),
+                    'type'        => 'adjustment',
+                    'quantity'    => $qty,
+                    'old_stock'   => $oldStock,
+                    'new_stock'   => $newStock,
+                    'reason'      => 'Mise à jour approvisionnement #' . $supply->id,
+                ]);
+            }
+
+            // D. Mettre à jour ou recréer le mouvement de caisse lié
+            CashMovement::where('boutique_id', $boutiqueId)
+                ->where('category', 'restock')
+                ->where('motif', 'like', "%#{$supply->purchase_order_id}%")
+                ->delete(); 
+
+            CashMovement::create([
+                'boutique_id' => $boutiqueId,
+                'user_id' => Auth::id(),
+                'type' => 'out',
+                'category' => 'restock',
+                'amount' => $newTotalAmount,
+                'motif' => $request->motif ?? 'Mise à jour approvisionnement #' . $supply->id,
+                'is_unjustified' => false,
+            ]);
+        });
+
+        return redirect()->route('supplies.index')
+                         ->with('success', 'Approvisionnement modifié avec succès.');
+    }
+
+    /**
+     * Annule un approvisionnement (retire la quantité du stock et rembourse virtuellement la caisse).
      */
     public function destroy($id)
     {
         DB::transaction(function () use ($id) {
-            $supply = Movement::where('type', 'entree')->findOrFail($id);
+            $boutiqueId = Auth::user()->boutique_id;
+            $supply = Movement::where('type', 'entree')->where('boutique_id', $boutiqueId)->findOrFail($id);
             
-            // Retirer la quantité du stock pour chaque produit et tracer l'annulation
+            $totalRefundAmount = 0;
             foreach ($supply->products as $product) {
                 $qty = $product->pivot->qty;
+                $unitPrice = $product->purchase_price ?? 0;
+                $totalRefundAmount += $qty * $unitPrice;
+
                 $oldStock = $product->quantity;
-                $newStock = max(0, $oldStock - $qty); // Évite un stock négatif
+                $newStock = max(0, $oldStock - $qty);
 
                 $product->update(['quantity' => $newStock]);
 
-                // --- TRACABILITÉ DE L'ANNULATION DANS L'HISTORIQUE ---
                 StockMovement::create([
-                    'boutique_id' => $supply->boutique_id,
+                    'boutique_id' => $boutiqueId,
                     'product_id'  => $product->id,
                     'user_id'     => Auth::id(),
-                    'type'        => 'adjustment', // ou 'sortie' selon tes préférences
+                    'type'        => 'adjustment',
                     'quantity'    => $qty,
                     'old_stock'   => $oldStock,
                     'new_stock'   => $newStock,
@@ -204,7 +354,6 @@ class SupplyController extends Controller
                 ]);
             }
 
-            // Supprimer la commande future (PurchaseOrder) liée si elle existe
             if ($supply->purchase_order_id) {
                 $purchaseOrder = PurchaseOrder::find($supply->purchase_order_id);
                 if ($purchaseOrder) {
@@ -213,12 +362,23 @@ class SupplyController extends Controller
                 }
             }
 
-            // Détacher les produits du mouvement et supprimer le mouvement
+            if ($totalRefundAmount > 0) {
+                CashMovement::create([
+                    'boutique_id' => $boutiqueId,
+                    'user_id' => Auth::id(),
+                    'type' => 'in',
+                    'category' => 'refund',
+                    'amount' => $totalRefundAmount,
+                    'motif' => 'Remboursement suite annulation approvisionnement #' . $supply->id,
+                    'is_unjustified' => false,
+                ]);
+            }
+
             $supply->products()->detach();
             $supply->delete();
         });
 
-        return back()->with('success', 'Approvisionnement annulé, stock corrigé et commande supprimée avec succès.');
+        return back()->with('success', 'Approvisionnement annulé et stock corrigé avec succès.');
     }
 
     // Export PDF de la journée

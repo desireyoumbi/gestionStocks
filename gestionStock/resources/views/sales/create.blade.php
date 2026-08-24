@@ -26,6 +26,12 @@
             <input type="text" name="motif" value="{{ old('motif', 'Vente') }}" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500 transition">
         </div>
 
+        <!-- Téléphone du client pour le reçu WhatsApp -->
+        <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
+            <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Téléphone du client (Optionnel - Pour WhatsApp)</label>
+            <input type="text" name="client_phone" value="{{ old('client_phone') }}" placeholder="Ex: 678177749 ou +237678177749" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500 transition">
+        </div>
+
         <!-- Lignes de produits -->
         <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-900 pb-3">
@@ -37,10 +43,10 @@
 
             <div class="space-y-3">
                 <template x-for="(row, index) in rows" :key="index">
-                    <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
+                    <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
                         
                         <!-- Sélection du produit -->
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-[200px]">
                             <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Produit</label>
                             <select :name="`items[${index}][product_id]`" x-model="row.product_id" required class="w-full px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500">
                                 <option value="">-- Choisir un produit --</option>
@@ -52,10 +58,26 @@
                             </select>
                         </div>
 
+                        <!-- Prix unitaire affiché -->
+                        <div class="w-28">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">P.U.</label>
+                            <div class="px-3 py-2.5 bg-gray-100 dark:bg-gray-800/80 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                <span x-text="formatNumber(getPrice(row.product_id))"></span> F
+                            </div>
+                        </div>
+
                         <!-- Quantité -->
-                        <div class="w-36">
-                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Quantité</label>
-                            <input type="number" :name="`items[${index}][quantity]`" x-model="row.quantity" min="1" required class="w-full px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500">
+                        <div class="w-24">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Qté</label>
+                            <input type="number" :name="`items[${index}][quantity]`" x-model.number="row.quantity" min="1" required class="w-full px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500">
+                        </div>
+
+                        <!-- Sous-total de la ligne -->
+                        <div class="w-32">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Total Ligne</label>
+                            <div class="px-3 py-2.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 rounded-lg text-sm font-black text-rose-600 dark:text-rose-400">
+                                <span x-text="formatNumber(getSubtotal(row))"></span> F
+                            </div>
                         </div>
 
                         <!-- Bouton Supprimer la ligne -->
@@ -68,6 +90,14 @@
                     </div>
                 </template>
             </div>
+        </div>
+
+        <!-- RÉCAPITULATIF MONTANT TOTAL -->
+        <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+            <span class="text-sm font-black uppercase tracking-wider text-gray-500">Montant Total de la Vente :</span>
+            <span class="text-2xl font-black text-rose-600 dark:text-rose-400">
+                <span x-text="formatNumber(getTotalAmount())"></span> FCFA
+            </span>
         </div>
 
         <!-- Bouton de validation global -->
@@ -84,6 +114,9 @@
 </div>
 
 <script>
+    // Injection des produits de Laravel vers JS avec leurs prix de vente
+    const productsData = @json($products->keyBy('id'));
+
     function saleForm() {
         return {
             rows: [{ product_id: '', quantity: 1 }],
@@ -94,6 +127,25 @@
                 if (this.rows.length > 1) {
                     this.rows.splice(index, 1);
                 }
+            },
+            getPrice(productId) {
+                if (!productId || !productsData[productId]) return 0;
+                return parseFloat(productsData[productId].selling_price) || 0;
+            },
+            getSubtotal(row) {
+                const price = this.getPrice(row.product_id);
+                const qty = parseInt(row.quantity) || 0;
+                return price * qty;
+            },
+            getTotalAmount() {
+                let total = 0;
+                this.rows.forEach(row => {
+                    total += this.getSubtotal(row);
+                });
+                return total;
+            },
+            formatNumber(value) {
+                return new Intl.NumberFormat('fr-FR').format(value);
             }
         }
     }

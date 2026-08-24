@@ -126,6 +126,7 @@
                                 <th class="p-4">Prix Unit.</th>
                                 <th class="p-4">Total Ligne</th>
                                 <th class="p-4">Motif</th>
+                                <th class="p-4 text-right">Statut</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-900 text-gray-700 dark:text-gray-300">
@@ -147,7 +148,12 @@
                                         </td>
                                         <td class="p-4 sale-price">{{ number_format($price, 0, ',', ' ') }}</td>
                                         <td class="p-4 font-bold text-gray-900 dark:text-white sale-total">{{ number_format($lineTotal, 0, ',', ' ') }} FCFA</td>
-                                        <td class="p-4 text-gray-500 sale-motif">{{ $sale->motif }}</td>
+                                        <td class="p-4 text-gray-500 sale-motif">{{ $sale->motif ?? '-' }}</td>
+                                        <td class="p-4 text-right">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
+                                                Validé
+                                            </span>
+                                        </td>
                                     </tr>
                                 @endforeach
                             @endforeach
@@ -169,11 +175,119 @@
 
 </div>
 
+<!-- MODALE DE SUCCÈS ET REÇU WHATSAPP INTÉGRÉE ICI -->
+@if(session('success_sale'))
+@php
+    $sale = session('success_sale');
+    
+    // Récupération sécurisée du nom de la boutique basé sur la colonne 'nom'
+    $boutiqueName = 'E-STOCKY';
+    if ($sale && $sale->user && isset($sale->user->boutique) && $sale->user->boutique) {
+        $boutiqueName = $sale->user->boutique->nom;
+    } elseif (auth()->check() && auth()->user()->boutique) {
+        $boutiqueName = auth()->user()->boutique->nom;
+    }
+    
+    $totalAmount = 0;
+    if ($sale && $sale->products) {
+        foreach($sale->products as $product) {
+            $qty = $product->pivot->qty ?? ($product->pivot->quantity ?? 1);
+            $totalAmount += $qty * $product->selling_price;
+        }
+    }
+
+    $whatsappText  = "*REÇU D'ACHAT - " . urlencode($boutiqueName) . "*%0A";
+    $whatsappText .= "--------------------------------%0A";
+    $whatsappText .= "📅 Date : " . ($sale->created_at ? date('d/m/Y H:i', strtotime($sale->created_at)) : date('d/m/Y H:i')) . "%0A";
+    $whatsappText .= "🧾 Reçu N° : #" . $sale->id . "%0A";
+    if(!empty($sale->motif)) {
+        $whatsappText .= "📌 Motif : " . urlencode($sale->motif) . "%0A";
+    }
+    $whatsappText .= "%0A*Articles :*%0A";
+    
+    if ($sale && $sale->products) {
+        foreach($sale->products as $product) {
+            $qty = $product->pivot->qty ?? ($product->pivot->quantity ?? 1);
+            $subtotal = $qty * $product->selling_price;
+            $whatsappText .= "▪ " . $qty . "x " . $product->name . " (" . number_format($product->selling_price, 0, ',', ' ') . " F) = *" . number_format($subtotal, 0, ',', ' ') . " FCFA*%0A";
+        }
+    }
+    
+    $whatsappText .= "--------------------------------%0A";
+    $whatsappText .= "💰 *TOTAL : " . number_format($totalAmount, 0, ',', ' ') . " FCFA*%0A";
+    $whatsappText .= "--------------------------------%0A";
+    $whatsappText .= "🙏 Merci pour votre confiance ! À très bientôt.";
+
+    $phone = preg_replace('/[^0-9]/', '', $sale->client_phone ?? '');
+    if (strlen($phone) === 9) {
+        $phone = '237' . $phone;
+    }
+    
+    if (!empty($phone)) {
+        $whatsappUrl = "https://web.whatsapp.com/send?phone=" . $phone . "&text=" . $whatsappText;
+    } else {
+        $whatsappUrl = "https://web.whatsapp.com/";
+    }
+@endphp
+
+<div id="modal-success-sale" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md space-y-6 rounded-3xl bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 p-6 shadow-2xl">
+        
+        <div class="text-center space-y-2">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500 text-xl font-bold shadow-sm">
+                ✓
+            </div>
+            <h3 class="text-lg font-black text-gray-900 dark:text-gray-100">Vente validée avec succès !</h3>
+            <p class="text-xs font-medium text-gray-400">Le stock a été mis à jour et la vente enregistrée.</p>
+        </div>
+
+        <div class="rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 space-y-3 text-xs font-medium text-gray-600 dark:text-gray-300">
+            <div class="flex justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+                <span class="font-bold text-gray-900 dark:text-gray-100">Reçu #{{ $sale->id }}</span>
+                <span class="text-gray-400">{{ date('d/m/Y H:i') }}</span>
+            </div>
+            
+            <div class="space-y-1.5 max-h-32 overflow-y-auto">
+                @if($sale->products)
+                    @foreach($sale->products as $product)
+                        @php $q = $product->pivot->qty ?? ($product->pivot->quantity ?? 1); @endphp
+                        <div class="flex justify-between">
+                            <span>{{ $q }}x {{ $product->name }}</span>
+                            <span class="font-bold text-gray-900 dark:text-gray-100">{{ number_format($q * $product->selling_price, 0, ',', ' ') }} F</span>
+                        </div>
+                    @endforeach
+                @endif
+            </div>
+
+            <div class="flex justify-between border-t border-gray-200 dark:border-gray-800 pt-2 text-sm font-black text-gray-900 dark:text-gray-100">
+                <span>TOTAL</span>
+                <span class="text-emerald-500">{{ number_format($totalAmount, 0, ',', ' ') }} FCFA</span>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-2.5">
+            <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer" 
+               onclick="document.getElementById('modal-success-sale').style.display='none';" 
+               class="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 px-4 py-3 text-xs font-bold text-gray-950 shadow-md transition">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                </svg>
+                Envoyer le reçu sur WhatsApp
+            </a>
+
+            <button onclick="document.getElementById('modal-success-sale').remove()" class="w-full rounded-xl bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-300 transition">
+                Fermer / Nouvelle vente
+            </button>
+        </div>
+
+    </div>
+</div>
+@endif
+
 <!-- SCRIPT DE RECHERCHE INSTANTANÉE -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('liveSearch');
-        
         if (!searchInput) return;
 
         searchInput.addEventListener('input', function(e) {

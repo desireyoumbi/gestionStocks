@@ -121,6 +121,7 @@ class ProductController extends Controller
             ],
             'purchase_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0|gte:purchase_price',
+            'quantity' => 'required|integer|min:0', // <-- Ajout de la validation de la quantité initiale
             'alert_threshold' => 'nullable|integer|min:0',
             'category_id' => 'required|exists:categories,id',
             'description' => 'nullable|string|max:1000',
@@ -137,22 +138,46 @@ class ProductController extends Controller
             $validated['image'] = $request->file('image')->store('products', 'public');
         }
 
-        $validated['quantity'] = 0;
-        $validated['status'] = 'rupture'; 
+        $initialQuantity = (int) $validated['quantity'];
+
+        // Détermination automatique du statut en fonction du stock initial
+        $validated['status'] = $initialQuantity > 0 ? 'disponible' : 'rupture'; 
         $validated['boutique_id'] = Auth::user()->boutique_id;
         $validated['user_id'] = Auth::id();
 
         // 1. Création du produit
         $product = Product::create($validated);
 
-        // 2. Création immédiate de la notification de rupture initiale
-        \App\Models\Notification::create([
-            'boutique_id' => $product->boutique_id ?? 1,
-            'user_id' => Auth::id(),
-            'title' => 'Rupture de stock',
-            'message' => "Le produit '{$product->name}' a été créé avec un stock de 0.",
-            'type' => 'warning'
-        ]);
+        // 2. Si une quantité initiale est saisie, on crée un mouvement de stock et une notification adaptée
+        if ($initialQuantity > 0) {
+            StockMovement::create([
+                'boutique_id' => $product->boutique_id,
+                'product_id'  => $product->id,
+                'user_id'     => Auth::id(),
+                'type'        => 'entry',
+                'quantity'    => $initialQuantity,
+                'old_stock'   => 0,
+                'new_stock'   => $initialQuantity,
+                'reason'      => 'Stock initial à la création du produit',
+            ]);
+
+            \App\Models\Notification::create([
+                'boutique_id' => $product->boutique_id ?? 1,
+                'user_id'     => Auth::id(),
+                'title'       => 'Nouveau stock initial',
+                'message'     => "Le produit '{$product->name}' a été créé avec un stock initial de {$initialQuantity}.",
+                'type'        => 'success'
+            ]);
+        } else {
+            // Notification de rupture si créé à 0
+            \App\Models\Notification::create([
+                'boutique_id' => $product->boutique_id ?? 1,
+                'user_id'     => Auth::id(),
+                'title'       => 'Rupture de stock',
+                'message'     => "Le produit '{$product->name}' a été créé avec un stock de 0.",
+                'type'        => 'warning'
+            ]);
+        }
 
         return redirect()->route('products.index')->with('success', 'Produit créé avec succès.');
     }
