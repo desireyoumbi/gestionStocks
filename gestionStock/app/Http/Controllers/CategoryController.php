@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
@@ -56,8 +57,15 @@ class CategoryController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required', 
+                'string', 
+                'max:255',
+                Rule::unique('categories', 'name')->where('boutique_id', Auth::user()->boutique_id)
+            ],
             'description' => ['nullable', 'string'],
+        ], [
+            'name.unique' => 'Une catégorie portant ce nom existe déjà dans votre boutique.',
         ]);
 
         Category::create([
@@ -118,8 +126,17 @@ class CategoryController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required', 
+                'string', 
+                'max:255',
+                Rule::unique('categories', 'name')
+                    ->where('boutique_id', Auth::user()->boutique_id)
+                    ->ignore($category->id)
+            ],
             'description' => ['nullable', 'string'],
+        ], [
+            'name.unique' => 'Une catégorie portant ce nom existe déjà dans votre boutique.',
         ]);
 
         $category->update([

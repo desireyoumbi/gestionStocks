@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('header_title', 'Configurer ma boutique')
 @section('content')
 @if(Auth::check() && Auth::user()->role === 'administrateur')
 <div class="max-w-3xl mx-auto space-y-6">
@@ -19,22 +19,49 @@
         </div>
     @endif
 
-    <!-- Bloc Infos Générales -->
+    <!-- Bloc Infos Générales, Logo & Couleur -->
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h2 class="text-white font-bold mb-4">Informations</h2>
-        <form action="{{ route('boutique.update') }}" method="POST">
+        <h2 class="text-white font-bold mb-4">Informations & Personnalisation</h2>
+        <form action="{{ route('boutique.update') }}" method="POST" enctype="multipart/form-data">
             @csrf @method('PATCH')
             <div class="space-y-4">
+                <!-- Nom -->
                 <div>
                     <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Nom de la boutique</label>
                     <input type="text" name="nom" value="{{ old('nom', $boutique->nom) }}" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-amber-500">
                 </div>
+
+                <!-- Logo -->
+                <div>
+                    <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Logo de la boutique</label>
+                    <div class="flex items-center gap-4">
+                        @if(!empty($boutique->logo))
+                            <img src="{{ asset('storage/' . $boutique->logo) }}" alt="Logo" class="w-12 h-12 rounded-lg object-cover border border-gray-800">
+                        @else
+                            <div class="w-12 h-12 rounded-lg bg-gray-950 border border-gray-800 flex items-center justify-center text-xs text-gray-500 font-bold">
+                                Aucun
+                            </div>
+                        @endif
+                        <input type="file" name="logo" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-750 transition cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Couleur principale -->
+                <div>
+                    <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Couleur principale de l'interface</label>
+                    <div class="flex items-center gap-3">
+                        <input type="color" name="primary_color" value="{{ old('primary_color', $boutique->primary_color ?? '#f59e0b') }}" class="w-10 h-10 rounded-lg bg-gray-950 border border-gray-800 cursor-pointer p-1">
+                        <span class="text-xs text-gray-400">Personnalise la couleur des éléments clés (boutons, accents).</span>
+                    </div>
+                </div>
+
+                <!-- Créée le -->
                 <div>
                     <label class="block text-xs text-gray-400 uppercase font-semibold mb-1">Créée le</label>
                     <input type="text" disabled value="{{ $boutique->created_at->format('d/m/Y à H:i') }}" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-gray-500 text-sm cursor-not-allowed">
                 </div>
             </div>
-            <button class="mt-4 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold px-4 py-2.5 rounded-lg text-sm transition">Enregistrer</button>
+            <button type="submit" class="mt-4 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold px-4 py-2.5 rounded-lg text-sm transition">Enregistrer</button>
         </form>
     </div>
 

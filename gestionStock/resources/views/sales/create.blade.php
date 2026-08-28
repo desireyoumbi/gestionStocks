@@ -26,12 +26,6 @@
             <input type="text" name="motif" value="{{ old('motif', 'Vente') }}" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500 transition">
         </div>
 
-        <!-- Téléphone du client pour le reçu WhatsApp -->
-        <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Téléphone du client (Optionnel - Pour WhatsApp)</label>
-            <input type="text" name="client_phone" value="{{ old('client_phone') }}" placeholder="Ex: 678177749 ou +237678177749" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500 transition">
-        </div>
-
         <!-- Lignes de produits -->
         <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-900 pb-3">
@@ -114,7 +108,6 @@
 </div>
 
 <script>
-    // Injection des produits de Laravel vers JS avec leurs prix de vente
     const productsData = @json($products->keyBy('id'));
 
     function saleForm() {

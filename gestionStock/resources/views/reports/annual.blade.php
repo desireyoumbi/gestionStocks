@@ -172,7 +172,7 @@
 </div>
 
 <!-- Modal pour Définir / Ajuster le Fonds Initial -->
-<div id="modal-adjust-fund" class="hidden bg-slate-900/50 fixed inset-0 z-50 flex items-center justify-center p-4">
+<div id="modal-adjust-fund" class="{{ $errors->has('amount') ? '' : 'hidden' }} bg-slate-900/50 fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl">
         <div class="flex justify-between items-center">
             <h3 class="text-base font-black text-slate-900">Définir / Ajuster le Fonds Initial</h3>
@@ -183,12 +183,23 @@
             @csrf
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Montant (FCFA)</label>
-                <input type="number" name="amount" required step="any" placeholder="Ex: 500000" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <input type="number" name="amount" required step="any" value="{{ old('amount') }}" placeholder="Ex: 500000" class="w-full rounded-xl border {{ $errors->has('amount') ? 'border-rose-500' : 'border-slate-200' }} px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                
+                <!-- Message d'erreur de validation pour le montant -->
+                @error('amount')
+                    <p class="mt-1 text-xs text-rose-500 font-semibold flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        {{ $message }}
+                    </p>
+                @enderror
             </div>
 
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Motif / Description</label>
-                <input type="text" name="motif" placeholder="Ex: Capital de départ / Injection de trésorerie" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <input type="text" name="motif" value="{{ old('motif') }}" placeholder="Ex: Capital de départ / Injection de trésorerie" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                @error('motif')
+                    <p class="mt-1 text-xs text-rose-500 font-semibold">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="flex justify-end gap-2 pt-2">

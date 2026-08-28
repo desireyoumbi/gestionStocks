@@ -28,6 +28,7 @@ class User extends Authenticatable
         'role',
         'boutique_id',
         'doit_changer_mdp',
+        'code_connexion',
     ];
 
     protected $hidden = [

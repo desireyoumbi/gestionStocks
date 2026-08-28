@@ -7,10 +7,13 @@
 <div class="max-w-3xl mx-auto relative">
     <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
         
-        <form action="{{ route('supplies.store') }}" method="POST" class="space-y-6">
+        <form id="supply-form" action="{{ route('supplies.store') }}" method="POST" class="space-y-6">
             @csrf
 
-            <!-- Erreurs classiques -->
+            <!-- Champ caché pour forcer la validation malgré un solde de caisse insuffisant -->
+            <input type="hidden" name="force_cash" id="force_cash" value="0">
+
+            <!-- Erreurs classiques de validation -->
             @if($errors->any())
                 <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-semibold">
                     <ul class="list-disc pl-4 space-y-1">
@@ -48,8 +51,15 @@
                     <div class="col-span-3">
                         <input type="number" name="products[0][qty]" placeholder="Qté" min="1" required class="product-qty w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200">
                     </div>
-                    <div class="col-span-3">
+                    <div class="col-span-2">
                         <input type="number" name="products[0][unit_price]" placeholder="Prix Achat" required class="product-price w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200">
+                    </div>
+                    <div class="col-span-1 text-center">
+                        <button type="button" class="remove-row p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition" title="Retirer la ligne">
+                            <svg class="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -77,38 +87,73 @@
             </div>
         </form>
     </div>
+</div>
 
-    <!-- MODAL FIXE EN CAS D'ERREUR DE CAISSE INSUFFISANTE -->
-    @if(session('cash_error'))
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-            <div class="bg-white dark:bg-gray-900 border border-rose-500/30 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 text-center animate-in fade-in zoom-in duration-200">
-                <div class="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold shadow-inner">
-                    ⚠️
-                </div>
-                <div>
-                    <h3 class="text-lg font-black text-slate-900 dark:text-white tracking-tight">Fonds insuffisants en caisse</h3>
-                    <p class="text-xs text-slate-500 dark:text-gray-400 mt-2 leading-relaxed">
-                        {{ session('cash_error') }}
-                    </p>
-                </div>
-                <div class="flex flex-col gap-3 pt-2">
-                    <!-- Lien de redirection vers la page de gestion/ajustement de la caisse (ex: reports.annual ou ta route de caisse) -->
-                    <a href="{{ route('reports.annual') }}" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2">
-                        <span>Ajuster la caisse & ajouter des fonds</span>
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                    </a>
-                    <button type="button" onclick="this.closest('.fixed').style.display='none'" class="w-full py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs rounded-xl transition">
-                        Fermer et modifier ma commande
-                    </button>
-                </div>
+<!-- MODALE PERSONNALISÉE D'AVERTISSEMENT CAISSE -->
+<div id="cash-warning-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl space-y-4">
+        <div class="flex items-center space-x-3 text-amber-500">
+            <svg class="w-8 h-8 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Solde de caisse insuffisant</h3>
+        </div>
+        
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            L'argent en caisse est insuffisant pour couvrir cet approvisionnement. Continuer mettra la caisse en négatif.
+        </p>
+
+        <div class="bg-gray-50 dark:bg-gray-950 p-3 rounded-xl space-y-1 text-xs font-medium text-gray-700 dark:text-gray-300">
+            <div class="flex justify-between">
+                <span>Montant de l'achat :</span>
+                <span id="modal-required-amount" class="font-bold text-rose-500">0 FCFA</span>
+            </div>
+            <div class="flex justify-between">
+                <span>Solde actuel :</span>
+                <span id="modal-current-balance" class="font-bold text-emerald-500">0 FCFA</span>
             </div>
         </div>
-    @endif
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+            <button type="button" id="modal-cancel" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs rounded-xl transition">
+                Annuler
+            </button>
+            <button type="button" id="modal-confirm" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold text-xs rounded-xl transition">
+                Forcer et continuer
+            </button>
+        </div>
+    </div>
 </div>
 
 <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        @if(session('insufficient_cash'))
+            let requiredAmount = "{{ number_format(session('required_amount'), 0, ',', ' ') }} FCFA";
+            let currentBalance = "{{ number_format(session('current_balance'), 0, ',', ' ') }} FCFA";
+            
+            // Injecter les montants dans la modale
+            document.getElementById('modal-required-amount').textContent = requiredAmount;
+            document.getElementById('modal-current-balance').textContent = currentBalance;
+            
+            // Afficher la modale proprement
+            let modal = document.getElementById('cash-warning-modal');
+            modal.classList.remove('hidden');
+
+            // Bouton Confirmer de la modale
+            document.getElementById('modal-confirm').addEventListener('click', function() {
+                document.getElementById('force_cash').value = '1';
+                modal.classList.add('hidden');
+                document.getElementById('supply-form').submit();
+            });
+
+            // Bouton Annuler de la modale
+            document.getElementById('modal-cancel').addEventListener('click', function() {
+                document.getElementById('force_cash').value = '0';
+                modal.classList.add('hidden');
+            });
+        @endif
+    });
+
     let productIndex = 1;
 
     function calculateGrandTotal() {
@@ -121,7 +166,9 @@
         document.getElementById('grand-total').textContent = new Intl.NumberFormat('fr-FR').format(grandTotal) + ' FCFA';
     }
 
-    document.getElementById('products-container').addEventListener('change', function(e) {
+    const container = document.getElementById('products-container');
+
+    container.addEventListener('change', function(e) {
         if (e.target.classList.contains('product-select')) {
             let selectedOption = e.target.options[e.target.selectedIndex];
             let price = selectedOption.getAttribute('data-price') || 0;
@@ -131,14 +178,28 @@
         }
     });
 
-    document.getElementById('products-container').addEventListener('input', function(e) {
+    container.addEventListener('input', function(e) {
         if (e.target.classList.contains('product-qty') || e.target.classList.contains('product-price')) {
             calculateGrandTotal();
         }
     });
 
+    container.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-row')) {
+            let row = e.target.closest('.product-row');
+            if (document.querySelectorAll('.product-row').length > 1) {
+                row.remove();
+                calculateGrandTotal();
+            } else {
+                row.querySelector('.product-select').value = '';
+                row.querySelector('.product-qty').value = '';
+                row.querySelector('.product-price').value = '';
+                calculateGrandTotal();
+            }
+        }
+    });
+
     document.getElementById('add-product').addEventListener('click', function() {
-        let container = document.getElementById('products-container');
         let newRow = document.createElement('div');
         newRow.className = 'product-row grid grid-cols-12 gap-3 items-center';
         newRow.innerHTML = `
@@ -153,8 +214,15 @@
             <div class="col-span-3">
                 <input type="number" name="products[${productIndex}][qty]" placeholder="Qté" min="1" required class="product-qty w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200">
             </div>
-            <div class="col-span-3">
+            <div class="col-span-2">
                 <input type="number" name="products[${productIndex}][unit_price]" placeholder="Prix Achat" required class="product-price w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200">
+            </div>
+            <div class="col-span-1 text-center">
+                <button type="button" class="remove-row p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition" title="Retirer la ligne">
+                    <svg class="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
         `;
         container.appendChild(newRow);

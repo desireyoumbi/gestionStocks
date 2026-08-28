@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage; // <-- N'oublie pas d'importer Storage
 
 class BoutiqueSettingsController extends Controller
 {
@@ -14,7 +15,6 @@ class BoutiqueSettingsController extends Controller
     public function index()
     {
         $user = Auth::user();
-        // Vérification de sécurité : seul l'admin peut voir cette page
         if ($user->role !== 'administrateur') {
             return redirect()->route('dashboard')->with('error', 'Accès refusé.');
         }
@@ -25,48 +25,58 @@ class BoutiqueSettingsController extends Controller
         return view('settings.boutique', compact('boutique', 'staff'));
     }
 
-    // Mise à jour des infos générales
+    // Mise à jour des infos générales, du logo et de la couleur
     public function update(Request $request)
     {
         $request->validate([
             'nom' => 'required|string|max:255',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048', // Validation de l'image
+            'primary_color' => 'nullable|string|max:7', // Validation de la couleur (ex: #f59e0b)
         ]);
 
         /** @var \App\Models\Boutique $boutique */
         $boutique = Boutique::findOrFail(Auth::user()->boutique_id);
         
-        $boutique->update([
+        // Données de base à mettre à jour
+        $data = [
             'nom' => $request->nom,
-        ]);
+            'primary_color' => $request->primary_color,
+        ];
 
-        return back()->with('success', 'Nom de la boutique mis à jour avec succès.');
+        // Gestion de l'upload du logo
+        if ($request->hasFile('logo')) {
+            // Supprimer l'ancien logo s'il existe
+            if ($boutique->logo && Storage::disk('public')->exists($boutique->logo)) {
+                Storage::disk('public')->delete($boutique->logo);
+            }
+
+            // Enregistrer le nouveau logo dans storage/app/public/logos
+            $path = $request->file('logo')->store('logos', 'public');
+            $data['logo'] = $path;
+        }
+
+        $boutique->update($data);
+
+        return back()->with('success', 'Paramètres de la boutique mis à jour avec succès.');
     }
 
-    // Suppression définitive de la boutique
     // Suppression définitive de la boutique
     public function destroy(Request $request)
     {
         $user = Auth::user();
         $boutique = Boutique::findOrFail($user->boutique_id);
         
-        // 1. Vérification du texte de confirmation
         if ($request->confirm_text !== 'SUPPRIMER_MA_BOUTIQUE') {
             return back()->with('error', 'Veuillez taper le texte de confirmation exact.');
         }
 
-        // 2. Vérification de sécurité supplémentaire (Mot de passe de l'admin)
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);
 
-        // 3. Supprimer TOUS les utilisateurs liés à cette boutique (staff + admin)
-        // pour qu'ils ne puissent plus jamais se connecter avec ce compte.
         User::where('boutique_id', $boutique->id)->delete();
-
-        // 4. Suppression définitive de la boutique
         $boutique->delete();
 
-        // 5. Déconnexion complète, nettoyage de session et redirection vers l'inscription
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

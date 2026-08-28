@@ -3,14 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Expense;
-use App\Models\CashMovement; // Import du modèle de caisse
+use App\Models\CashMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB; // Import de la façade DB
+use Illuminate\Support\Facades\DB;
 
 class ExpenseController extends Controller
 {
-    // Afficher la liste des dépenses de la boutique
     public function index()
     {
         $boutiqueId = Auth::user()->boutique_id;
@@ -19,7 +18,6 @@ class ExpenseController extends Controller
             ->orderBy('expense_date', 'desc')
             ->paginate(10);
 
-        // Total des dépenses du mois en cours pour information rapide
         $totalMonthExpenses = Expense::where('boutique_id', $boutiqueId)
             ->whereYear('expense_date', now()->year)
             ->whereMonth('expense_date', now()->month)
@@ -28,68 +26,60 @@ class ExpenseController extends Controller
         return view('expenses.index', compact('expenses', 'totalMonthExpenses'));
     }
 
-    // Enregistrer une nouvelle dépense et impacter la caisse
     public function store(Request $request)
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:0|max:999999999999999999.99',
+            'expense_date' => 'nullable|date',
             'description' => 'nullable|string',
+        ], [
+            'amount.required' => 'Le montant est obligatoire.',
+            'amount.numeric' => 'Le montant doit être un nombre valide.',
+            'amount.min' => 'Le montant de la dépense ne peut pas être négatif.',
+            'amount.max' => 'Le montant saisi est trop élevé.',
+            'title.required' => 'Le libellé de la dépense est obligatoire.',
+            'expense_date.date' => 'La date de l’opération n’est pas valide.',
         ]);
 
         $user = Auth::user();
-        $boutique = $user->boutique;
+        $boutiqueId = $user->boutique_id;
         $amount = $request->amount;
-        $today = now()->toDateString(); // Date du jour automatique
+        
+        // Si l'utilisateur a choisi une date, on la prend, sinon on met la date du jour
+        $expenseDate = $request->filled('expense_date') ? $request->expense_date : now()->toDateString();
 
-        // 1. Vérifier le solde de la caisse de la boutique
-        $currentCashBalance = $boutique ? $boutique->getCashBalance() : 0;
-
-        // 2. BLOQUER si le solde est insuffisant (et déclencher ton modal d'erreur de caisse)
-        if ($amount > $currentCashBalance) {
-            return redirect()->back()
-                ->withInput()
-                ->with('cash_error', 'Opération bloquée : Fonds insuffisants en caisse (' . number_format($currentCashBalance, 0, ',', ' ') . ' FCFA disponibles pour une dépense de ' . number_format($amount, 0, ',', ' ') . ' FCFA). Veuillez ajuster la caisse.');
-        }
-
-        DB::transaction(function () use ($request, $user, $amount, $today) {
-            $boutiqueId = $user->boutique_id;
-
-            // 3. Enregistrer la dépense avec la date du jour automatique
+        DB::transaction(function () use ($request, $user, $boutiqueId, $amount, $expenseDate) {
             $expense = Expense::create([
                 'boutique_id' => $boutiqueId,
                 'user_id' => $user->id,
                 'title' => $request->title,
                 'amount' => $amount,
-                'expense_date' => $today, // Forcé à aujourd'hui
+                'expense_date' => $expenseDate,
                 'description' => $request->description,
             ]);
 
-            // 4. Enregistrer la sortie d'argent correspondante dans les mouvements de caisse avec un motif unique
             CashMovement::create([
                 'boutique_id' => $boutiqueId,
                 'user_id' => $user->id,
                 'type' => 'out',
-                'category' => 'expense', // Catégorie dépense
+                'category' => 'expense',
                 'amount' => $amount,
                 'motif' => 'Dépense #' . $expense->id . ' : ' . $request->title,
-                'is_unjustified' => false, // Désormais justifié puisque bloqué si insuffisant
+                'is_unjustified' => false,
             ]);
         });
 
         return redirect()->route('expenses.index')->with('success', 'Dépense enregistrée et caisse mise à jour avec succès.');
     }
 
-    // Supprimer une dépense
     public function destroy(Expense $expense)
     {
-        // Sécurité : s'assurer que la dépense appartient bien à la boutique de l'utilisateur
         if ($expense->boutique_id !== Auth::user()->boutique_id) {
             abort(403);
         }
 
         DB::transaction(function () use ($expense) {
-            // Supprimer le mouvement de caisse exact lié à cette dépense précise grâce à son ID
             CashMovement::where('boutique_id', $expense->boutique_id)
                 ->where('category', 'expense')
                 ->where('motif', 'like', 'Dépense #' . $expense->id . ' %')

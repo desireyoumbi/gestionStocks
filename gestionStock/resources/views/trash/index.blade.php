@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('header_title', 'reccuperer mes donnees')
 @section('page-title', 'Corbeille')
 
 @section('content')

@@ -9,28 +9,27 @@ use Illuminate\Support\Facades\Auth;
 class NotificationController extends Controller
 {
     /**
-     * Affiche le centre de notifications.
+     * Affiche le centre de notifications de la boutique.
      */
     public function index()
     {
-        $userId = Auth::id();
+        $boutiqueId = Auth::user()->boutique_id;
 
-
-
-        // Supprimer automatiquement les notifications lues qui datent de plus d'un jour
-        \App\Models\Notification::whereNotNull('read_at')
+        // Supprimer automatiquement les notifications lues de la boutique qui datent de plus d'un jour
+        Notification::where('boutique_id', $boutiqueId)
+            ->whereNotNull('read_at')
             ->where('created_at', '<', now()->subDay())
             ->delete();
             
-        // Récupérer les notifications de l'utilisateur connecté avec pagination
-        $notifications = Notification::where('user_id', $userId)
+        // Récupérer les notifications de la boutique avec pagination
+        $notifications = Notification::where('boutique_id', $boutiqueId)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        $totalNotifications = Notification::where('user_id', $userId)->count();
+        $totalNotifications = Notification::where('boutique_id', $boutiqueId)->count();
 
-        // Messages non lus (basé sur read_at qui est null)
-        $unreadMessages = Notification::where('user_id', $userId)
+        // Messages non lus pour la boutique
+        $unreadMessages = Notification::where('boutique_id', $boutiqueId)
             ->whereNull('read_at')
             ->count();
 
@@ -42,7 +41,8 @@ class NotificationController extends Controller
      */
     public function markAsRead($id)
     {
-        $notification = Notification::where('user_id', Auth::id())->findOrFail($id);
+        // On s'assure que la notification appartient bien à la boutique de l'utilisateur
+        $notification = Notification::where('boutique_id', Auth::user()->boutique_id)->findOrFail($id);
 
         $notification->update([
             'read_at' => now()
@@ -52,11 +52,11 @@ class NotificationController extends Controller
     }
 
     /**
-     * Marquer toutes les notifications comme lues.
+     * Marquer toutes les notifications de la boutique comme lues.
      */
     public function markAllAsRead()
     {
-        Notification::where('user_id', Auth::id())
+        Notification::where('boutique_id', Auth::user()->boutique_id)
             ->whereNull('read_at')
             ->update([
                 'read_at' => now()

@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Movement;
 use App\Models\StockMovement;
-use App\Models\CashMovement; // Import du modèle de caisse
+use App\Models\CashMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SaleController extends Controller
@@ -18,7 +19,7 @@ class SaleController extends Controller
      */
     public function index(Request $request)
     {
-        $boutiqueId = auth()->user()->boutique_id;
+        $boutiqueId = Auth::user()->boutique_id;
 
         // 1. La requête principale (pour la liste paginée)
         $query = Movement::with(['products', 'user'])
@@ -88,31 +89,36 @@ class SaleController extends Controller
      */
     public function create()
     {
-        $boutiqueId = auth()->user()->boutique_id ?? 1;
+        $boutiqueId = Auth::user()->boutique_id;
         $products = Product::where('boutique_id', $boutiqueId)->get();
         
         return view('sales.create', compact('products'));
     }
 
     /**
-     * Enregistre la vente, met à jour le stock, crédite la caisse et redirige vers l'index avec la modale.
+     * Enregistre la vente, met à jour le stock, crédite la caisse et redirige vers l'index.
      */
     public function store(Request $request)
     {
+        $boutiqueId = Auth::user()->boutique_id;
+
+        // Validation stricte incluant l'appartenance des produits à la boutique
         $request->validate([
             'motif' => 'nullable|string|max:255',
-            'client_phone' => 'nullable|string|max:20',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.product_id' => [
+                'required',
+                Rule::exists('products', 'id')->where('boutique_id', $boutiqueId),
+            ],
+            'items.*.quantity' => 'required|integer|min:1|max:2147483647',
+        ], [
+            'items.*.product_id.exists' => 'Un ou plusieurs produits sélectionnés sont invalides.',
+            'items.*.quantity.max' => 'La quantité demandée est trop élevée.',
         ]);
 
-        $movementId = null;
-
         try {
-            DB::transaction(function () use ($request, &$movementId) {
+            DB::transaction(function () use ($request, $boutiqueId) {
                 $user = Auth::user();
-                $boutiqueId = $user->boutique_id ?? 1;
                 $totalSaleAmount = 0;
 
                 // 1. Créer le mouvement global de vente
@@ -122,15 +128,14 @@ class SaleController extends Controller
                     'date' => now(),
                     'user_id' => $user->id,
                     'motif' => $request->motif ?? 'Vente',
-                    'client_phone' => $request->client_phone,
                 ]);
 
-                // Stocker l'ID pour le récupérer proprement hors de la transaction
-                $movementId = $movement->id;
-
-                // 2. Parcourir chaque produit du panier
+                // 2. Parcourir chaque produit du panier avec verrouillage anti-concurrence
                 foreach ($request->items as $item) {
-                    $product = Product::lockForUpdate()->find($item['product_id']);
+                    $product = Product::where('boutique_id', $boutiqueId)
+                        ->where('id', $item['product_id'])
+                        ->lockForUpdate()
+                        ->firstOrFail();
 
                     if ($product->quantity < $item['quantity']) {
                         throw new \Exception("Stock insuffisant pour le produit : {$product->name}. Stock actuel : {$product->quantity}");
@@ -145,8 +150,11 @@ class SaleController extends Controller
                     // Attacher dans la table pivot movement_products
                     $movement->products()->attach($product->id, ['qty' => $quantitySold]);
 
-                    // Décrémenter le stock
-                    $product->update(['quantity' => $newStock]);
+                    // Décrémenter le stock et mettre à jour le statut si besoin
+                    $product->update([
+                        'quantity' => $newStock,
+                        'status' => $newStock > 0 ? 'disponible' : 'rupture'
+                    ]);
 
                     // Historique global des stocks
                     StockMovement::create([
@@ -176,15 +184,8 @@ class SaleController extends Controller
             return back()->withInput()->withErrors(['quantity' => $e->getMessage()]);
         }
 
-        // 4. Charger proprement le mouvement avec ses produits pour la modale WhatsApp
-        $freshMovement = Movement::with('products')->findOrFail($movementId);
-
-        // Redirection directe vers la page INDEX (avec les données pour déclencher la modale si besoin sur l'index)
         return redirect()->route('sales.index')
-                         ->with([
-                             'success' => 'Vente et encaissement enregistrés avec succès.',
-                             'success_sale' => $freshMovement
-                         ]);
+                         ->with('success', 'Vente et encaissement enregistrés avec succès.');
     }
 
     /**
@@ -192,33 +193,44 @@ class SaleController extends Controller
      */
     public function destroy($id)
     {
-        DB::transaction(function () use ($id) {
-            $sale = Movement::where('type', 'sortie')->findOrFail($id);
+        $boutiqueId = Auth::user()->boutique_id;
+
+        DB::transaction(function () use ($id, $boutiqueId) {
+            $sale = Movement::where('boutique_id', $boutiqueId)
+                ->where('type', 'sortie')
+                ->findOrFail($id);
             
-            // Parcourir les produits associés à cette vente pour restituer le stock et tracer l'annulation
+            // Parcourir les produits associés pour restituer le stock avec verrouillage
             foreach ($sale->products as $product) {
-                $pivotQty = $product->pivot->qty ?? ($product->pivot->quantity ?? 1);
-                $oldStock = $product->quantity;
-                $newStock = $oldStock + $pivotQty;
+                $productToUpdate = Product::where('id', $product->id)->lockForUpdate()->first();
+                
+                if ($productToUpdate) {
+                    $pivotQty = $product->pivot->qty ?? ($product->pivot->quantity ?? 1);
+                    $oldStock = $productToUpdate->quantity;
+                    $newStock = $oldStock + $pivotQty;
 
-                // Restituer le stock
-                $product->update(['quantity' => $newStock]);
+                    // Restituer le stock et rafraîchir le statut
+                    $productToUpdate->update([
+                        'quantity' => $newStock,
+                        'status' => 'disponible'
+                    ]);
 
-                // --- TRACABILITÉ DE L'ANNULATION DANS L'HISTORIQUE ---
-                StockMovement::create([
-                    'boutique_id' => $sale->boutique_id,
-                    'product_id'  => $product->id,
-                    'user_id'     => Auth::id(),
-                    'type'        => 'adjustment',
-                    'quantity'    => $pivotQty,
-                    'old_stock'   => $oldStock,
-                    'new_stock'   => $newStock,
-                    'reason'      => 'Annulation de la vente #' . $sale->id,
-                ]);
+                    // Traçabilité de l'annulation dans l'historique
+                    StockMovement::create([
+                        'boutique_id' => $boutiqueId,
+                        'product_id'  => $productToUpdate->id,
+                        'user_id'     => Auth::id(),
+                        'type'        => 'adjustment',
+                        'quantity'    => $pivotQty,
+                        'old_stock'   => $oldStock,
+                        'new_stock'   => $newStock,
+                        'reason'      => 'Annulation de la vente #' . $sale->id,
+                    ]);
+                }
             }
 
-            // Supprimer l'encaissement correspondant dans la caisse s'il existe
-            CashMovement::where('boutique_id', $sale->boutique_id)
+            // Supprimer l'encaissement correspondant dans la caisse
+            CashMovement::where('boutique_id', $boutiqueId)
                 ->where('category', 'sale')
                 ->where('type', 'in')
                 ->where('motif', 'like', '%vente #' . $sale->id . '%')
@@ -233,15 +245,13 @@ class SaleController extends Controller
 
     public function exportPdf()
     {
-        $boutiqueId = session('boutique_id') ?? auth()->user()->boutique_id; 
+        $boutiqueId = Auth::user()->boutique_id; 
         
-        $query = Movement::where('type', 'sortie')->with(['products', 'user']);
-
-        if ($boutiqueId) {
-            $query->where('boutique_id', $boutiqueId);
-        }
-
-        $sales = $query->latest()->get();
+        $sales = Movement::where('boutique_id', $boutiqueId)
+            ->where('type', 'sortie')
+            ->with(['products', 'user'])
+            ->latest()
+            ->get();
 
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
@@ -252,22 +262,18 @@ class SaleController extends Controller
         });
 
         $pdf = Pdf::loadView('sales.pdf-global', compact('sales', 'totalGeneral'));
-        return $pdf->download('toutes-les-ventes.pdf');
+        return $pdf->download('toutes-les-ventes-' . date('Y-m-d') . '.pdf');
     }
 
     public function exportPdfByDate($date)
     {
-        $boutiqueId = session('boutique_id') ?? auth()->user()->boutique_id;
+        $boutiqueId = Auth::user()->boutique_id;
         
-        $query = Movement::where('type', 'sortie')
-                         ->whereDate('created_at', $date)
-                         ->with(['products', 'user']);
-
-        if ($boutiqueId) {
-            $query->where('boutique_id', $boutiqueId);
-        }
-
-        $sales = $query->get();
+        $sales = Movement::where('boutique_id', $boutiqueId)
+            ->where('type', 'sortie')
+            ->whereDate('created_at', $date)
+            ->with(['products', 'user'])
+            ->get();
 
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {

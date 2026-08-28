@@ -43,7 +43,7 @@
 
         <!-- Bouton "Passer" discret, apparaît après un court délai -->
         <div class="skip-link mt-6 text-center">
-            <a href="{{ route('register.form') }}" id="skipLink" class="text-xs sm:text-sm text-slate-400 hover:text-slate-700 font-medium tracking-wide transition">
+            <a href="{{ route('home') }}" id="skipLink" class="text-xs sm:text-sm text-slate-400 hover:text-slate-700 font-medium tracking-wide transition">
                 Passer l'introduction &rarr;
             </a>
         </div>
@@ -52,7 +52,7 @@
     <script>
         const video = document.getElementById('introVideo');
         const skipLink = document.getElementById('skipLink');
-        const destination = "{{ route('register.form') }}";
+        const destination = "{{ route('home') }}";
 
         function goToDestination(e) {
             if (e) e.preventDefault();

@@ -44,8 +44,17 @@ use App\Models\StockMovement;
 // ========  La page d'accueil affiche la vidéo d'introduction =========
 
 Route::get('/', function () {
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+
     return view('Auth.welcome_intro');
 })->name('welcome.intro');
+
+// 2. Page d'accueil principale (après la vidéo)
+Route::get('/accueil', function () {
+    return view('accueil.test');
+})->name('home');
 
 // ================= fin de acceuil ==================
 

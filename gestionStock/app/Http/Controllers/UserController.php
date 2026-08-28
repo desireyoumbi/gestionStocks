@@ -6,8 +6,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Validation\Rule;
- use Barryvdh\DomPDF\Facade\Pdf;
 
 class UserController extends Controller
 {
@@ -21,7 +22,7 @@ class UserController extends Controller
 
         // Sécurité supplémentaire : seuls les administrateurs peuvent modifier un utilisateur
         if (Auth::user()->role === 'vendeur') {
-            abort(403, "Vous n'avez pas l'autorisation de modifier un utilisateur.");
+            abort(403, "Vous n'avez pas l'autorisation de voir cette page.");
         }
 
         // 2. Filtre optionnel par rôle (si l'admin trie par vendeur ou vice-administrateur)
@@ -29,13 +30,14 @@ class UserController extends Controller
             $query->where('role', $request->role);
         }
 
-        // 3. Recherche générale (sur le nom, le téléphone ou l'email)
+        // 3. Recherche générale (sur le nom, le téléphone, l'email ou le code de connexion)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
                     ->orWhere('phone', 'LIKE', "%{$search}%")
-                    ->orWhere('email', 'LIKE', "%{$search}%");
+                    ->orWhere('email', 'LIKE', "%{$search}%")
+                    ->orWhere('code_connexion', 'LIKE', "%{$search}%");
             });
         }
 
@@ -51,7 +53,11 @@ class UserController extends Controller
      */
     public function create()
     {
-        // Attention au nom du dossier de vue (user ou users selon ton arborescence)
+        // Sécurité : seuls les administrateurs peuvent créer un utilisateur
+        if (Auth::user()->role !== 'administrateur') {
+            abort(403, "Vous n'avez pas l'autorisation d'ajouter un utilisateur.");
+        }
+
         return view('user.create');
     }
 
@@ -67,68 +73,48 @@ class UserController extends Controller
 
         $boutiqueId = Auth::user()->boutique_id;
 
-        // Vérification préalable : le téléphone ou l'email correspond-il à un compte
-        // précédemment supprimé (soft delete) dans cette même boutique ?
-        $deletedByPhone = User::onlyTrashed()
-            ->where('boutique_id', $boutiqueId)
-            ->where('phone', $request->phone)
-            ->first();
-
-        if ($deletedByPhone) {
-            return back()->withErrors([
-                'phone' => "Ce numéro appartient à un ancien compte supprimé ({$deletedByPhone->name}). "
-                         . "Restaurez ce compte plutôt que d'en créer un nouveau, ou utilisez un autre numéro.",
-            ])->withInput();
-        }
-
-        if ($request->filled('email')) {
-            $deletedByEmail = User::onlyTrashed()
-                ->where('boutique_id', $boutiqueId)
-                ->where('email', $request->email)
-                ->first();
-
-            if ($deletedByEmail) {
-                return back()->withErrors([
-                    'email' => "Cet email appartient à un ancien compte supprimé ({$deletedByEmail->name}). "
-                             . "Restaurez ce compte plutôt que d'en créer un nouveau, ou utilisez un autre email.",
-                ])->withInput();
-            }
-        }
-
-        // Validation classique : unicité parmi les comptes ACTIFS de cette boutique
+        // Validation avec unicité conditionnée par boutique_id
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => [
                 'required',
                 'string',
                 'max:9',
-                Rule::unique('users', 'phone')->where(
-                    fn ($query) => $query->where('boutique_id', $boutiqueId)
-                ),
+                Rule::unique('users', 'phone')->where('boutique_id', $boutiqueId),
             ],
             'email' => [
                 'nullable',
                 'string',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->where(
-                    fn ($query) => $query->where('boutique_id', $boutiqueId)
-                ),
+                Rule::unique('users', 'email')->where('boutique_id', $boutiqueId),
             ],
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|string|in:vice_administrateur,vendeur',
+        ], [
+            'phone.unique' => 'Ce numéro de téléphone est déjà utilisé par un autre utilisateur dans cette boutique.',
+            'email.unique' => 'Cette adresse email est déjà utilisée par un autre utilisateur dans cette boutique.',
         ]);
 
         $validated['boutique_id'] = $boutiqueId;
         $validated['password'] = Hash::make($validated['password']);
         $validated['doit_changer_mdp'] = true;
 
+        // Génération d'un code de connexion explicite et unique (ex: QUIN-4812)
+        $prefix = strtoupper(Str::slug(Auth::user()->boutique->nom ?? 'STCK'));
+        $prefix = substr($prefix, 0, 4);
+
+        do {
+            $codeConnexion = $prefix . '-' . rand(1000, 9999);
+        } while (User::where('code_connexion', $codeConnexion)->exists());
+
+        $validated['code_connexion'] = $codeConnexion;
+
         User::create($validated);
 
         return redirect()->route('user.index')
-            ->with('succes', 'Utilisateur créé avec succès. Il devra changer son mot de passe à sa première connexion.');
+            ->with('succes', "Utilisateur créé avec succès. Son code de connexion unique est : {$codeConnexion}");
     }
-
     /**
      * Display the specified resource.
      */
@@ -167,8 +153,8 @@ class UserController extends Controller
 
         $validate = $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:9|unique:users,phone,' . $user->id,
-            'email' => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
+            'phone' => 'required|string|max:9',
+            'email' => 'nullable|string|email|max:255',
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'required|string|in:administrateur,vice_administrateur,vendeur',
         ]);
@@ -222,19 +208,18 @@ class UserController extends Controller
         return view('user.roles');
     }
 
+    /**
+     * Exporter la liste des utilisateurs en PDF.
+     */
+    public function exportPdf()
+    {
+        // Récupérer les utilisateurs de la boutique
+        $users = User::where('boutique_id', Auth::user()->boutique_id)->get();
 
+        // Charger la vue PDF et passer les données
+        $pdf = Pdf::loadView('user.pdf', compact('users'));
 
-// ... à l'intérieur de UserController
-
-public function exportPdf()
-{
-    // Récupérer les utilisateurs de la boutique
-    $users = User::where('boutique_id', Auth::user()->boutique_id)->get();
-
-    // Charger la vue PDF et passer les données
-    $pdf = Pdf::loadView('user.pdf', compact('users'));
-
-    // Télécharger le fichier
-    return $pdf->download('liste-utilisateurs-' . date('Y-m-d') . '.pdf');
-}
+        // Télécharger le fichier
+        return $pdf->download('liste-utilisateurs-' . date('Y-m-d') . '.pdf');
+    }
 }

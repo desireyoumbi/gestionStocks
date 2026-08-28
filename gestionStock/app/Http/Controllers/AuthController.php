@@ -21,7 +21,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'password' => 'required|string|min:8|confirmed',
-            'phone' => 'required|string|max:9|',
+            'phone' => 'required|string|max:60|',
             'email' => 'nullable|string|email|',
             'nom_boutique' => 'required|string|max:255',
         ]);
@@ -31,6 +31,13 @@ class AuthController extends Controller
                 'nom' => $request->nom_boutique,
             ]);
 
+            $prefix = strtoupper(\Illuminate\Support\Str::slug($request->nom_boutique));
+            $prefix = substr($prefix, 0, 4);
+
+            do {
+                $codeConnexion = $prefix . '-' . rand(1000, 9999);
+            } while (\App\Models\User::where('code_connexion', $codeConnexion)->exists());
+
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -38,33 +45,31 @@ class AuthController extends Controller
                 'phone' => $request->phone,
                 'role' => 'administrateur',
                 'boutique_id' => $boutique->id,
+                'code_connexion' => $codeConnexion,
                 'doit_changer_mdp' => false,
             ]);
 
             Auth::login($user);
 
+            // On stocke le code dans une session flash dédiée pour la popup
             return redirect()->route('dashboard')
-                             ->with('success', 'Bienvenue ' . $user->name);
+                             ->with('new_user_code', $codeConnexion);
         });
     }
-
     public function showLogin()
     {
         return view('Auth.login');
     }
 
-    public function login(Request $request)
+   public function login(Request $request)
     {
         $request->validate([
-            'identifiant' => 'required|string',
+            'code_connexion' => 'required|string',
             'password' => 'required|string',
         ]);
 
-        $identifiant = $request->identifiant;
-        $champ = filter_var($identifiant, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
-
         $credentials = [
-            $champ => $identifiant,
+            'code_connexion' => $request->code_connexion,
             'password' => $request->password,
         ];
 
@@ -78,8 +83,8 @@ class AuthController extends Controller
         }
 
         return back()->withErrors([
-            'identifiant' => 'Identifiant ou mot de passe incorrect',
-        ])->onlyInput('identifiant');
+            'code_connexion' => 'Code de connexion ou mot de passe incorrect',
+        ])->onlyInput('code_connexion');
     }
 
     public function logout(Request $request)

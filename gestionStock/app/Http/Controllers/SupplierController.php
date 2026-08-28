@@ -6,6 +6,8 @@ use App\Models\Supplier;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SupplierController extends Controller
@@ -22,7 +24,6 @@ class SupplierController extends Controller
         $boutiqueId = Auth::user()->boutique_id;
         $search = $request->input('search');
 
-        // MODIFICATION ICI : On charge la relation 'products' avec with()
         $query = Supplier::with('products')->where('boutique_id', $boutiqueId);
 
         if ($search) {
@@ -50,14 +51,13 @@ class SupplierController extends Controller
             return abort(403, "Vous n'êtes pas autorisé à voir cette page");
         }
 
-        // MODIFICATION ICI : On récupère les produits de la boutique pour les afficher dans le formulaire
         $products = Product::where('boutique_id', Auth::user()->boutique_id)->get();
 
         return view('suppliers.create', compact('products'));
     }
 
     /**
-     * Enregistre un nouveau fournisseur dans la base de données.
+     * Enregistre un nouveau fournisseur dans la base de données (Obligation d'avoir au moins un produit).
      */
     public function store(Request $request)
     {
@@ -65,28 +65,50 @@ class SupplierController extends Controller
             return abort(403, "Vous n'êtes pas autorisé à créer un fournisseur");
         }
 
+        $boutiqueId = Auth::user()->boutique_id;
+
+        // Validation stricte avec unicité du téléphone par boutique
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'adresse' => 'nullable|string|max:255',
-            'products' => 'nullable|array',
-            'products.*' => 'exists:products,id',
+            'phone' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('suppliers', 'phone')->where('boutique_id', $boutiqueId),
+            ],
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                // Optionnel : décommenter si tu veux aussi l'email unique par boutique
+                // Rule::unique('suppliers', 'email')->where('boutique_id', $boutiqueId),
+            ],
+            'adresse' => 'nullable|string|max:500',
+            'products' => 'required|array|min:1',
+            'products.*' => [
+                'required',
+                Rule::exists('products', 'id')->where('boutique_id', $boutiqueId),
+            ],
+        ], [
+            'phone.unique' => 'Ce numéro de téléphone est déjà utilisé par un autre fournisseur dans cette boutique.',
+            'products.required' => 'Vous devez obligatoirement assigner au moins un produit à ce fournisseur.',
+            'products.min' => 'Vous devez obligatoirement assigner au moins un produit à ce fournisseur.',
+            'products.*.exists' => 'Un ou plusieurs produits sélectionnés sont invalides ou n\'appartiennent pas à votre boutique.',
         ]);
 
-        $validated['boutique_id'] = Auth::user()->boutique_id;
-        $validated['user_id'] = Auth::id();
+        return DB::transaction(function () use ($request, $validated, $boutiqueId) {
+            $validated['boutique_id'] = $boutiqueId;
+            $validated['user_id'] = Auth::id();
 
-        // Création du fournisseur
-        $supplier = Supplier::create($validated);
+            // Création du fournisseur
+            $supplier = Supplier::create($validated);
 
-        // MODIFICATION ICI : Synchronisation des produits sélectionnés
-        if ($request->has('products')) {
+            // Synchronisation des produits
             $supplier->products()->sync($request->products);
-        }
 
-        return redirect()->route('suppliers.index')
-                         ->with('succes', 'Fournisseur ajouté avec succès.');
+            return redirect()->route('suppliers.index')
+                             ->with('succes', 'Fournisseur ajouté avec succès.');
+        });
     }
 
     /**
@@ -102,7 +124,6 @@ class SupplierController extends Controller
             return abort(403, "Vous n'êtes pas autorisé à voir cette page");
         }
 
-        // Charger les produits liés si nécessaire
         $supplier->load('products');
 
         return view('suppliers.show', compact('supplier'));
@@ -111,22 +132,16 @@ class SupplierController extends Controller
     /**
      * Affiche le formulaire de modification d'un fournisseur.
      */
-    /**
-     * Affiche le formulaire de modification d'un fournisseur.
-     */
     public function edit(Supplier $supplier)
     {
-        // Sécurité multi-boutique
         if ($supplier->boutique_id !== Auth::user()->boutique_id) {
             abort(404, "Fournisseur introuvable.");
         }
 
-        // Sécurité rôle vendeur
         if (Auth::user()->role === 'vendeur') {
             return abort(403, "Vous n'êtes pas autorisé à voir cette page");
         }
 
-        // Récupération de tous les produits de la boutique et chargement des relations
         $products = Product::where('boutique_id', Auth::user()->boutique_id)->get();
         $supplier->load('products');
 
@@ -134,7 +149,7 @@ class SupplierController extends Controller
     }
 
     /**
-     * Met à jour les informations du fournisseur.
+     * Met à jour les informations du fournisseur (Garde l'obligation d'avoir au moins un produit).
      */
     public function update(Request $request, Supplier $supplier)
     {
@@ -146,27 +161,34 @@ class SupplierController extends Controller
             return abort(403, "Vous n'êtes pas autorisé à modifier des informations sur cette page");
         }
 
+        $boutiqueId = Auth::user()->boutique_id;
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:255',
             'adresse' => 'nullable|string|max:500',
-            'products' => 'nullable|array',
-            'products.*' => 'exists:products,id',
+            'products' => 'required|array|min:1',
+            'products.*' => [
+                'required',
+                Rule::exists('products', 'id')->where('boutique_id', $boutiqueId),
+            ],
+        ], [
+            'products.required' => 'Le fournisseur doit obligatoirement rester associé à au moins un produit.',
+            'products.min' => 'Le fournisseur doit obligatoirement rester associé à au moins un produit.',
+            'products.*.exists' => 'Un ou plusieurs produits sélectionnés sont invalides.',
         ]);
 
-        $validated['updated_by'] = Auth::id();
-        $supplier->update($validated);
+        return DB::transaction(function () use ($request, $supplier, $validated) {
+            $validated['updated_by'] = Auth::id();
+            $supplier->update($validated);
 
-        // MODIFICATION ICI : Mise à jour (synchronisation) des produits associés
-        if ($request->has('products')) {
+            // Mise à jour des produits associés
             $supplier->products()->sync($request->products);
-        } else {
-            $supplier->products()->detach(); // Si aucun produit n'est coché, on retire tout
-        }
 
-        return redirect()->route('suppliers.index')
-                         ->with('succes', 'Fournisseur modifié avec succès.');
+            return redirect()->route('suppliers.index')
+                             ->with('succes', 'Fournisseur modifié avec succès.');
+        });
     }
 
     /**
@@ -182,7 +204,11 @@ class SupplierController extends Controller
             abort(403, "Vous n'avez pas l'autorisation de supprimer ce fournisseur.");
         }
 
-        $supplier->delete();
+        DB::transaction(function () use ($supplier) {
+            // Détacher les produits avant la suppression pour nettoyer la table pivot
+            $supplier->products()->detach();
+            $supplier->delete();
+        });
 
         return redirect()->route('suppliers.index')
                          ->with('succes', 'Fournisseur supprimé avec succès.');

@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SupplyController extends Controller
@@ -46,7 +47,7 @@ class SupplyController extends Controller
         // 2. On récupère uniquement les éléments de la page actuelle sous forme de collection
         $currentItems = collect($suppliesPaginator->items());
 
-        // Calculs basés uniquement sur la page actuelle
+        // Calculs basés uniquement sur la page actuelle (en se basant sur le purchase_price du produit)
         $totalOperations = $currentItems->count();
 
         $totalArticles = $currentItems->sum(function($movement) {
@@ -82,7 +83,7 @@ class SupplyController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id;
         $products = Product::where('boutique_id', $boutiqueId)->get();
-        $suppliers = Supplier::where('boutique_id', $boutiqueId)->get();
+        $suppliers = Supplier::where('boutique_id', $boutiqueId)->with('products')->get();
 
         return view('supplies.create', compact('products', 'suppliers'));
     }
@@ -92,17 +93,32 @@ class SupplyController extends Controller
      */
     public function store(Request $request)
     {
+        $boutiqueId = Auth::user()->boutique_id;
+
         $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => [
+                'required',
+                Rule::exists('suppliers', 'id')->where('boutique_id', $boutiqueId),
+            ],
             'motif' => 'nullable|string|max:255',
             'products' => 'required|array|min:1',
-            'products.*.id' => 'required|exists:products,id',
+            'products.*.id' => [
+                'required',
+                Rule::exists('products', 'id')->where('boutique_id', $boutiqueId),
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->filled('supplier_id')) {
+                        $supplier = Supplier::find($request->supplier_id);
+                        if ($supplier && !$supplier->products()->where('product_id', $value)->exists()) {
+                            $fail("Le produit sélectionné n'est pas assuré par ce fournisseur.");
+                        }
+                    }
+                },
+            ],
             'products.*.qty' => 'required|integer|min:1',
-            'products.*.unit_price' => 'required|numeric|min:0',
+            'products.*.unit_price' => 'required|numeric|min:0.01',
+        ], [
+            'products.*.unit_price.min' => 'Le prix d\'achat unitaire ne peut pas être égal à 0 ou négatif.',
         ]);
-
-        $user = Auth::user();
-        $boutique = $user->boutique; 
 
         // 1. Calculer le montant total de l'approvisionnement
         $totalAmount = 0;
@@ -110,19 +126,24 @@ class SupplyController extends Controller
             $totalAmount += $item['qty'] * $item['unit_price'];
         }
 
-        // 2. Vérifier le solde de la caisse et bloquer via la clé 'cash_error' si insuffisant
-        $currentCashBalance = $boutique ? $boutique->getCashBalance() : 0;
+        // 2. Calculer le solde actuel de la caisse pour cette boutique
+        $totalIn = CashMovement::where('boutique_id', $boutiqueId)->where('type', 'in')->sum('amount');
+        $totalOut = CashMovement::where('boutique_id', $boutiqueId)->where('type', 'out')->sum('amount');
+        $currentCashBalance = $totalIn - $totalOut;
 
-        if ($totalAmount > $currentCashBalance) {
-            return redirect()->back()
-                ->withInput()
-                ->with('cash_error', 'Opération bloquée : Fonds insuffisants en caisse (' . number_format($currentCashBalance, 0, ',', ' ') . ' FCFA disponibles pour un montant requis de ' . number_format($totalAmount, 0, ',', ' ') . ' FCFA). Veuillez ajuster la caisse.');
+        // 3. Vérifier si la caisse est insuffisante ET que l'utilisateur n'a pas forcé l'action
+        if ($totalAmount > $currentCashBalance && !$request->has('force_cash')) {
+            return back()->withInput()->with([
+                'insufficient_cash' => true,
+                'required_amount' => $totalAmount,
+                'current_balance' => $currentCashBalance,
+            ]);
         }
 
-        DB::transaction(function () use ($request, $user, $totalAmount) {
-            $boutiqueId = $user->boutique_id;
+        $user = Auth::user();
 
-            // 3. Création de la Commande Future (PurchaseOrder)
+        DB::transaction(function () use ($request, $user, $totalAmount, $boutiqueId) {
+            // Création de la Commande (PurchaseOrder)
             $purchaseOrder = PurchaseOrder::create([
                 'supplier_id' => $request->supplier_id,
                 'boutique_id' => $boutiqueId,
@@ -130,7 +151,7 @@ class SupplyController extends Controller
                 'status' => 'recue',
             ]);
 
-            // 4. Enregistrer le mouvement d'entrée
+            // Enregistrer le mouvement d'entrée
             $movement = Movement::create([
                 'boutique_id' => $boutiqueId,
                 'type' => 'entree',
@@ -140,7 +161,6 @@ class SupplyController extends Controller
                 'motif' => $request->motif ?? 'Approvisionnement stock via fournisseur',
             ]);
 
-            // 5. Associer les produits et mettre à jour le stock
             foreach ($request->products as $item) {
                 $productId = $item['id'];
                 $qty = $item['qty'];
@@ -176,7 +196,7 @@ class SupplyController extends Controller
                 ]);
             }
 
-            // 6. Enregistrer la sortie d'argent dans la caisse
+            // Enregistrer la sortie d'argent dans la caisse
             CashMovement::create([
                 'boutique_id' => $boutiqueId,
                 'user_id' => Auth::id(),
@@ -200,7 +220,7 @@ class SupplyController extends Controller
         $boutiqueId = Auth::user()->boutique_id;
         $supply = Movement::with(['products', 'purchaseOrder'])->where('type', 'entree')->where('boutique_id', $boutiqueId)->findOrFail($id);
         $products = Product::where('boutique_id', $boutiqueId)->get();
-        $suppliers = Supplier::where('boutique_id', $boutiqueId)->get();
+        $suppliers = Supplier::where('boutique_id', $boutiqueId)->with('products')->get();
 
         return view('supplies.edit', compact('supply', 'products', 'suppliers'));
     }
@@ -210,50 +230,46 @@ class SupplyController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $boutiqueId = Auth::user()->boutique_id;
+
         $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => [
+                'required',
+                Rule::exists('suppliers', 'id')->where('boutique_id', $boutiqueId),
+            ],
             'motif' => 'nullable|string|max:255',
             'products' => 'required|array|min:1',
-            'products.*.id' => 'required|exists:products,id',
+            'products.*.id' => [
+                'required',
+                Rule::exists('products', 'id')->where('boutique_id', $boutiqueId),
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->filled('supplier_id')) {
+                        $supplier = Supplier::find($request->supplier_id);
+                        if ($supplier && !$supplier->products()->where('product_id', $value)->exists()) {
+                            $fail("Le produit sélectionné n'est pas assuré par ce fournisseur.");
+                        }
+                    }
+                },
+            ],
             'products.*.qty' => 'required|integer|min:1',
-            'products.*.unit_price' => 'required|numeric|min:0',
+            'products.*.unit_price' => 'required|numeric|min:0.01',
+        ], [
+            'products.*.unit_price.min' => 'Le prix d\'achat unitaire ne peut pas être égal à 0 ou négatif.',
         ]);
 
-        $boutiqueId = Auth::user()->boutique_id;
         $supply = Movement::where('type', 'entree')->where('boutique_id', $boutiqueId)->findOrFail($id);
 
-        // 1. Calculer le nouveau montant total demandé
         $newTotalAmount = 0;
         foreach ($request->products as $item) {
             $newTotalAmount += $item['qty'] * $item['unit_price'];
         }
 
-        // 2. Calculer l'ancien montant qui avait été débité de la caisse
-        $oldTotalAmount = 0;
-        foreach ($supply->products as $prod) {
-            $oldTotalAmount += $prod->pivot->qty * $prod->pivot->unit_price; 
-        }
-
-        // 3. Vérifier si la caisse peut supporter la différence
-        $boutique = Auth::user()->boutique;
-        $currentCashBalance = $boutique ? $boutique->getCashBalance() : 0;
-        
-        $projectedBalance = $currentCashBalance + $oldTotalAmount - $newTotalAmount;
-
-        if ($projectedBalance < 0) {
-            return redirect()->back()
-                ->withInput()
-                ->with('cash_error', 'Modification bloquée : Fonds insuffisants en caisse pour couvrir ce nouveau montant (' . number_format($newTotalAmount, 0, ',', ' ') . ' FCFA). Veuillez ajuster la caisse.');
-        }
-
         DB::transaction(function () use ($request, $supply, $newTotalAmount, $boutiqueId) {
-            // A. Annuler l'ancien impact sur les stocks
             foreach ($supply->products as $product) {
                 $qtyOld = $product->pivot->qty;
                 $product->decrement('quantity', $qtyOld);
             }
 
-            // B. Mettre à jour la commande associée
             if ($supply->purchase_order_id) {
                 $purchaseOrder = PurchaseOrder::find($supply->purchase_order_id);
                 if ($purchaseOrder) {
@@ -269,7 +285,6 @@ class SupplyController extends Controller
                 }
             }
 
-            // C. Mettre à jour le mouvement d'entrée
             $supply->update(['motif' => $request->motif]);
             $supply->products()->detach();
 
@@ -278,7 +293,9 @@ class SupplyController extends Controller
                 $qty = $item['qty'];
                 $unitPrice = $item['unit_price'];
 
-                $supply->products()->attach($productId, ['qty' => $qty]);
+                $supply->products()->attach($productId, [
+                    'qty' => $qty,
+                ]);
 
                 $product = Product::lockForUpdate()->find($productId);
                 $oldStock = $product->quantity;
@@ -301,7 +318,6 @@ class SupplyController extends Controller
                 ]);
             }
 
-            // D. Mettre à jour ou recréer le mouvement de caisse lié
             CashMovement::where('boutique_id', $boutiqueId)
                 ->where('category', 'restock')
                 ->where('motif', 'like', "%#{$supply->purchase_order_id}%")
@@ -323,7 +339,7 @@ class SupplyController extends Controller
     }
 
     /**
-     * Annule un approvisionnement (retire la quantité du stock et rembourse virtuellement la caisse).
+     * Annule un approvisionnement.
      */
     public function destroy($id)
     {
@@ -334,6 +350,7 @@ class SupplyController extends Controller
             $totalRefundAmount = 0;
             foreach ($supply->products as $product) {
                 $qty = $product->pivot->qty;
+                // Utilisation de purchase_price de la table product
                 $unitPrice = $product->purchase_price ?? 0;
                 $totalRefundAmount += $qty * $unitPrice;
 
@@ -365,11 +382,11 @@ class SupplyController extends Controller
             if ($totalRefundAmount > 0) {
                 CashMovement::create([
                     'boutique_id' => $boutiqueId,
-                    'user_id' => Auth::id(),
-                    'type' => 'in',
-                    'category' => 'refund',
-                    'amount' => $totalRefundAmount,
-                    'motif' => 'Remboursement suite annulation approvisionnement #' . $supply->id,
+                    'user_id'     => Auth::id(),
+                    'type'        => 'in',
+                    'category'    => 'refund',
+                    'amount'      => $totalRefundAmount,
+                    'motif'       => 'Remboursement suite annulation approvisionnement #' . $supply->id,
                     'is_unjustified' => false,
                 ]);
             }
@@ -381,7 +398,6 @@ class SupplyController extends Controller
         return back()->with('success', 'Approvisionnement annulé et stock corrigé avec succès.');
     }
 
-    // Export PDF de la journée
     public function exportDayPdf(Request $request)
     {
         $boutiqueId = Auth::user()->boutique_id;
@@ -401,7 +417,6 @@ class SupplyController extends Controller
         return $pdf->download('approvisionnements_' . $date . '.pdf');
     }
 
-    // Export PDF de tout l'historique
     public function exportAllPdf()
     {
         $boutiqueId = Auth::user()->boutique_id;
@@ -418,4 +433,6 @@ class SupplyController extends Controller
 
         return $pdf->download('tous_les_approvisionnements_' . now()->format('Y-m-d') . '.pdf');
     }
+
+   
 }

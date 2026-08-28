@@ -8,13 +8,24 @@ use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class StockMovementController extends Controller
 {
     public function index(Request $request)
     {
-        // Récupère la boutique de l'utilisateur connecté
         $boutiqueId = Auth::user()->boutique_id;
+
+        // Validation optionnelle des paramètres de filtre pour la sécurité
+        $request->validate([
+            'search' => 'nullable|string|max:255',
+            'type' => 'nullable|string|in:entry,sale,adjustment,purchase', // Ajuste selon tes types réels en base
+            'user_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where('boutique_id', $boutiqueId),
+            ],
+            'date' => 'nullable|date',
+        ]);
 
         $query = StockMovement::with(['product', 'user', 'boutique'])
             ->where('boutique_id', $boutiqueId);
@@ -30,12 +41,12 @@ class StockMovementController extends Controller
             });
         }
 
-        // Filtre optionnel par type (entry, sale, adjustment, etc.)
+        // Filtre optionnel par type
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
 
-        // Filtre optionnel par utilisateur
+        // Filtre optionnel par utilisateur (sécurisé par la boutique)
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
@@ -56,7 +67,7 @@ class StockMovementController extends Controller
             return "Semaine du {$startOfWeek} au {$endOfWeek}";
         });
 
-        // Liste des produits et utilisateurs pour les filtres
+        // Liste des produits et utilisateurs de la boutique pour les filtres
         $products = Product::where('boutique_id', $boutiqueId)->get();
         $users = User::where('boutique_id', $boutiqueId)->get();
 
@@ -70,10 +81,19 @@ class StockMovementController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id;
 
+        $request->validate([
+            'search' => 'nullable|string|max:255',
+            'type' => 'nullable|string|max:50',
+            'user_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where('boutique_id', $boutiqueId),
+            ],
+            'date' => 'nullable|date',
+        ]);
+
         $query = StockMovement::with(['product', 'user', 'boutique'])
             ->where('boutique_id', $boutiqueId);
 
-        // Appliquer les mêmes filtres que l'index
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {

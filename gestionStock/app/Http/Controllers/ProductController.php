@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
-use App\Models\Supplier;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -45,7 +46,7 @@ class ProductController extends Controller
         $query = Product::where('boutique_id', $boutiqueId)
             ->with(['category']);
 
-        // Recherche textuelle (sur le nom ou la référence)
+        // Recherche textuelle sécurisée
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
@@ -94,6 +95,10 @@ class ProductController extends Controller
      */
     public function create()
     {
+        if (Auth::user()->role === 'vendeur') {
+            abort(403, "Vous n'êtes pas autorisé à accéder à cette page.");
+        }
+
         $categories = Category::where('boutique_id', Auth::user()->boutique_id)->get();
 
         return view('products.create', compact('categories'));
@@ -104,82 +109,81 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        // Vérification des droits
         if (Auth::user()->role === 'vendeur') {
-            return abort(403, "vous n'etes pas autoriser a modifier des information sur cette page");
+            abort(403, "Vous n'êtes pas autorisé à effectuer cette action.");
         }
 
+        // Validation avec prix d'achat > 0 et seuil d'alerte >= 5
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'reference' => [
                 'nullable',
                 'string',
                 'max:100',
-                \Illuminate\Validation\Rule::unique('products')->where(function ($query) {
+                Rule::unique('products')->where(function ($query) {
                     return $query->where('boutique_id', Auth::user()->boutique_id);
                 }),
             ],
-            'purchase_price' => 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0|gte:purchase_price',
-            'quantity' => 'required|integer|min:0', // <-- Ajout de la validation de la quantité initiale
-            'alert_threshold' => 'nullable|integer|min:0',
-            'category_id' => 'required|exists:categories,id',
+            'purchase_price' => 'required|numeric|min:0.01|max:999999999999999999.99', // Interdit 0 ou négatif
+            'selling_price' => 'required|numeric|min:0|max:999999999999999999.99|gte:purchase_price',
+            'quantity' => 'required|integer|min:0|max:2147483647',
+            'alert_threshold' => 'required|integer|min:5|max:2147483647', // Ne peut pas être inférieur à 5
+            'category_id' => [
+                'required',
+                Rule::exists('categories', 'id')->where('boutique_id', Auth::user()->boutique_id),
+            ],
             'description' => 'nullable|string|max:1000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ],[
             'reference.unique' => 'Cette référence existe déjà pour cette boutique.',
+            'purchase_price.min' => 'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
             'selling_price.gte' => 'Le prix de vente ne peut pas être inférieur au prix d\'achat.',
+            'alert_threshold.min' => 'Le seuil d\'alerte ne peut pas être inférieur à 5.',
             'image.image' => 'Le fichier doit être une image.',
             'image.max' => 'L\'image ne doit pas dépasser 2 Mo.',
         ]);
-            
-        // Gestion de l'upload de l'image
-        if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
-        }
 
-        $initialQuantity = (int) $validated['quantity'];
+        return DB::transaction(function () use ($request, $validated) {
+            $boutiqueId = Auth::user()->boutique_id;
 
-        // Détermination automatique du statut en fonction du stock initial
-        $validated['status'] = $initialQuantity > 0 ? 'disponible' : 'rupture'; 
-        $validated['boutique_id'] = Auth::user()->boutique_id;
-        $validated['user_id'] = Auth::id();
+            if (!empty($validated['reference'])) {
+                $exists = Product::where('boutique_id', $boutiqueId)
+                    ->where('reference', $validated['reference'])
+                    ->lockForUpdate()
+                    ->exists();
 
-        // 1. Création du produit
-        $product = Product::create($validated);
+                if ($exists) {
+                    return back()->withInput()->withErrors(['reference' => 'Un produit avec cette référence vient d\'être créé par un autre utilisateur.']);
+                }
+            }
 
-        // 2. Si une quantité initiale est saisie, on crée un mouvement de stock et une notification adaptée
-        if ($initialQuantity > 0) {
-            StockMovement::create([
-                'boutique_id' => $product->boutique_id,
-                'product_id'  => $product->id,
-                'user_id'     => Auth::id(),
-                'type'        => 'entry',
-                'quantity'    => $initialQuantity,
-                'old_stock'   => 0,
-                'new_stock'   => $initialQuantity,
-                'reason'      => 'Stock initial à la création du produit',
-            ]);
+            if ($request->hasFile('image')) {
+                $validated['image'] = $request->file('image')->store('products', 'public');
+            }
 
-            \App\Models\Notification::create([
-                'boutique_id' => $product->boutique_id ?? 1,
-                'user_id'     => Auth::id(),
-                'title'       => 'Nouveau stock initial',
-                'message'     => "Le produit '{$product->name}' a été créé avec un stock initial de {$initialQuantity}.",
-                'type'        => 'success'
-            ]);
-        } else {
-            // Notification de rupture si créé à 0
-            \App\Models\Notification::create([
-                'boutique_id' => $product->boutique_id ?? 1,
-                'user_id'     => Auth::id(),
-                'title'       => 'Rupture de stock',
-                'message'     => "Le produit '{$product->name}' a été créé avec un stock de 0.",
-                'type'        => 'warning'
-            ]);
-        }
+            $initialQuantity = (int) $validated['quantity'];
 
-        return redirect()->route('products.index')->with('success', 'Produit créé avec succès.');
+            $validated['status'] = $initialQuantity > 0 ? 'disponible' : 'rupture'; 
+            $validated['boutique_id'] = $boutiqueId;
+            $validated['user_id'] = Auth::id();
+
+            $product = Product::create($validated);
+
+            if ($initialQuantity > 0) {
+                StockMovement::create([
+                    'boutique_id' => $product->boutique_id,
+                    'product_id'  => $product->id,
+                    'user_id'     => Auth::id(),
+                    'type'        => 'entry',
+                    'quantity'    => $initialQuantity,
+                    'old_stock'   => 0,
+                    'new_stock'   => $initialQuantity,
+                    'reason'      => 'Stock initial à la création du produit',
+                ]);
+            }
+
+            return redirect()->route('products.index')->with('success', 'Produit créé avec succès.');
+        });
     }
 
     /**
@@ -203,6 +207,10 @@ class ProductController extends Controller
             abort(404, "Produit introuvable.");
         }
 
+        if (Auth::user()->role === 'vendeur') {
+            abort(403, "Action non autorisée.");
+        }
+
         $categories = Category::where('boutique_id', Auth::user()->boutique_id)->get();
 
         return view('products.edit', compact('product', 'categories'));
@@ -214,7 +222,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         if ($product->boutique_id !== Auth::user()->boutique_id) {
-            abort(404 ,"acces non autoriser");
+            abort(404, "Accès non autorisé.");
         }
 
         if (Auth::user()->role === 'vendeur') {
@@ -223,56 +231,69 @@ class ProductController extends Controller
 
         $rules = [
             'name' => 'required|string|max:255',
-            'reference' => 'nullable|string|max:100',
-            'selling_price' => 'required|numeric|min:0',
-            'quantity' => 'required|integer|min:0',
-            'alert_threshold' => 'required|integer|min:0',
+            'reference' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('products')->where(function ($query) use ($product) {
+                    return $query->where('boutique_id', $product->boutique_id);
+                })->ignore($product->id),
+            ],
+            'selling_price' => 'required|numeric|min:0|max:999999999999999999.99',
+            'quantity' => 'required|integer|min:0|max:2147483647',
+            'alert_threshold' => 'required|integer|min:5|max:2147483647', // Modifiable mais minimum 5
             'status' => 'required|in:disponible,rupture',
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => [
+                'required',
+                Rule::exists('categories', 'id')->where('boutique_id', Auth::user()->boutique_id),
+            ],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ];
 
         if (in_array(Auth::user()->role, ['administrateur', 'vice_administrateur'])) {
-            $rules['purchase_price'] = 'required|numeric|min:0';
+            $rules['purchase_price'] = 'required|numeric|min:0.01|max:999999999999999999.99'; // Interdit 0 lors de la maj admin
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'purchase_price.min' => 'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
+            'alert_threshold.min' => 'Le seuil d\'alerte ne peut pas être inférieur à 5.',
+        ]);
 
         if (Auth::user()->role === 'vendeur') {
             unset($validated['purchase_price']);
         }
 
-        if ($request->hasFile('image')) {
-            if ($product->image && Storage::disk('public')->exists($product->image)) {
-                Storage::disk('public')->delete($product->image);
+        return DB::transaction(function () use ($request, $product, $validated) {
+            if ($request->hasFile('image')) {
+                if ($product->image && Storage::disk('public')->exists($product->image)) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                $validated['image'] = $request->file('image')->store('products', 'public');
             }
-            $validated['image'] = $request->file('image')->store('products', 'public');
-        }
 
-        $validated['updated_by'] = Auth::id();
+            $validated['updated_by'] = Auth::id();
 
-        // --- ENREGISTREMENT AUTOMATIQUE DU MOUVEMENT DE STOCK ---
-        $oldStock = $product->quantity;
-        $newStock = (int) $validated['quantity'];
-        $difference = $newStock - $oldStock;
+            $oldStock = $product->quantity;
+            $newStock = (int) $validated['quantity'];
+            $difference = $newStock - $oldStock;
 
-        if ($difference !== 0) {
-            StockMovement::create([
-                'boutique_id' => $product->boutique_id,
-                'product_id'  => $product->id,
-                'user_id'     => Auth::id(),
-                'type'        => $difference > 0 ? 'entry' : 'adjustment',
-                'quantity'    => abs($difference),
-                'old_stock'   => $oldStock,
-                'new_stock'   => $newStock,
-                'reason'      => 'Modification manuelle depuis la modification du produit',
-            ]);
-        }
-        // --------------------------------------------------------
+            if ($difference !== 0) {
+                StockMovement::create([
+                    'boutique_id' => $product->boutique_id,
+                    'product_id'  => $product->id,
+                    'user_id'     => Auth::id(),
+                    'type'        => $difference > 0 ? 'entry' : 'adjustment',
+                    'quantity'    => abs($difference),
+                    'old_stock'   => $oldStock,
+                    'new_stock'   => $newStock,
+                    'reason'      => 'Modification manuelle depuis la modification du produit',
+                ]);
+            }
 
-        $product->update($validated);
+            $product->update($validated);
 
-        return redirect()->route('products.index')->with('succes', 'Produit mis à jour.');
+            return redirect()->route('products.index')->with('success', 'Produit mis à jour avec succès.');
+        });
     }
 
     /**
@@ -294,7 +315,7 @@ class ProductController extends Controller
 
         $product->delete();
         
-        return redirect()->route('products.index')->with('succes', 'Produit supprimé.');
+        return redirect()->route('products.index')->with('success', 'Produit supprimé avec succès.');
     }
 
     /**
@@ -305,7 +326,6 @@ class ProductController extends Controller
         $boutiqueId = Auth::user()->boutique_id;
         $products = Product::where('boutique_id', $boutiqueId)->with('category')->get();
 
-        // Génération et téléchargement du PDF
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('products.pdf', compact('products'));
 
         return $pdf->download('inventaire-produits-' . date('Y-m-d') . '.pdf');

@@ -4,25 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Models\Movement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class MovementController extends Controller
 {
     public function index(Request $request)
     {
-        // CORRECTION ICI : on utilise 'products' au pluriel
-        $query = Movement::with(['products', 'user']);
+        $boutiqueId = Auth::user()->boutique_id;
 
-        // Par défaut, on affiche les mouvements du jour
-        if (!$request->has('search') && !$request->has('type')) {
-            $query->whereDate('created_at', today());
-        }
+        // 1. Filtrage de base obligatoire par boutique
+        $query = Movement::where('boutique_id', $boutiqueId)
+            ->with(['products', 'user']);
 
-        // Filtre par type (entree / sortie) si demandé
+        // 3. Filtre par type (entree / sortie / ajustement) si demandé
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
 
-        // Barre de recherche
+        // 4. Barre de recherche (motif ou nom du produit lié)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -33,14 +32,12 @@ class MovementController extends Controller
             });
         }
 
-        $movements = $query->latest()->paginate(15);
+        $movements = $query->latest()->paginate(15)->appends($request->all());
 
-        // Statistiques pour les cartes du haut
-        // Note: Pour sommer les quantités via la table pivot, on utilise la relation ou un join si nécessaire, 
-        // mais pour l'instant un simple count ou une adaptation suffit si besoin.
-        $totalEntrees = Movement::where('type', 'entree')->count();
-        $totalSorties = Movement::where('type', 'sortie')->count();
-        $totalRecents = Movement::whereDate('created_at', today())->count();
+        // 5. Statistiques pour les cartes du haut (scopées à la boutique connectée !)
+        $totalEntrees = Movement::where('boutique_id', $boutiqueId)->where('type', 'entree')->count();
+        $totalSorties = Movement::where('boutique_id', $boutiqueId)->where('type', 'sortie')->count();
+        $totalRecents = Movement::where('boutique_id', $boutiqueId)->whereDate('created_at', today())->count();
 
         return view('movements.index', compact('movements', 'totalEntrees', 'totalSorties', 'totalRecents'));
     }

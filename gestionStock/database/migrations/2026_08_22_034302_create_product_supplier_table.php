@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('product_supplier', function (Blueprint $table) {
-           $table->id();
+        $table->id();
         $table->foreignId('supplier_id')->constrained()->cascadeOnDelete();
         $table->foreignId('product_id')->constrained()->cascadeOnDelete();
         // Optionnel : ajouter des timestamps si tu veux savoir quand le lien a été créé

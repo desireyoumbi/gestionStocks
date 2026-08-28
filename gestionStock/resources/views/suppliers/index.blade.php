@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('header_title', 'Mes fournisseurs')
 @section('content')
 <div class="space-y-6">
 
