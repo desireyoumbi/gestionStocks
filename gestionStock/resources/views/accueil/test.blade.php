@@ -770,7 +770,7 @@
                     <!-- TÉLÉPHONE -->
                     <!-- ========================================= -->
 
-                    <div
+                    {{-- <div
                         class="phone-mockup
                                absolute
                                -bottom-8
@@ -850,7 +850,7 @@
                         >
                         </div>
 
-                    </div>
+                    </div> --}}
 
 
 
