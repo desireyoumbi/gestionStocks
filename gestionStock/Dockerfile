@@ -17,8 +17,9 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 # Installer les extensions PHP
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# Activer Apache Rewrite Module
+# Activer Apache Rewrite Module et autoriser les .htaccess
 RUN a2enmod rewrite
+RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
 # Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
