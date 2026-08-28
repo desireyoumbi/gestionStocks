@@ -18,7 +18,7 @@
 
             <!-- Logo -->
             <div class="flex items-center gap-3">
-                <img src="{{ asset('images/logo.jpeg') }}" alt="Logo E-Stockly" class="w-10 h-10 rounded-xl object-cover object-top shadow-lg">
+                <img src="{{ asset('images/logo.png') }}" alt="Logo E-Stockly" class="w-10 h-10 rounded-xl object-cover object-top shadow-lg">
                 <div class="flex flex-col">
                     <span class="font-bold text-lg tracking-tight leading-none">E-Stockly</span>
                     <span class="text-[11px] text-indigo-300 font-medium tracking-wide mt-0.5">Gestion de stock centralisée</span>
