@@ -161,7 +161,7 @@ class UserController extends Controller
 
         // Gestion conditionnelle du mot de passe
         if ($request->filled('password')) {
-            $validate['password'] = Hash::make($request->password);
+            $validate['password'] = $request->password;
         } else {
             unset($validate['password']);
         }
