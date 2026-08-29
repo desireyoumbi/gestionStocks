@@ -141,54 +141,66 @@ class DashboardController extends Controller
     }
 
     public function annualReport()
-{
-    $user = auth()->user();
-    $boutiqueId = $user->boutique_id;
-    $boutique = $user->boutique;
+    {
+        $user = auth()->user();
+        $boutiqueId = $user->boutique_id;
+        $boutique = $user->boutique;
 
-    // 1. Fonds initial de la boutique
-    $initialFund = \App\Models\CashMovement::where('boutique_id', $boutiqueId)
-        ->where(function($q) {
-            $q->where('type', 'opening')->orWhere('category', 'initial');
-        })
-        ->sum('amount');
+        // 1. Fonds initial de la boutique
+        $initialFund = \App\Models\CashMovement::where('boutique_id', $boutiqueId)
+            ->where(function ($q) {
+                $q->where('type', 'opening')->orWhere('category', 'initial');
+            })
+            ->sum('amount');
 
-    // 2. Solde réel actuel en caisse
-    $currentCashBalance = $boutique ? $boutique->getCashBalance() : 0;
+        // 2. Solde réel actuel en caisse
+        $currentCashBalance = $boutique ? $boutique->getCashBalance() : 0;
 
-    // 3. Total des dépenses de l'année en cours
-    $totalYearExpenses = \App\Models\Expense::where('boutique_id', $boutiqueId)
-        ->whereYear('expense_date', date('Y'))
-        ->sum('amount');
+        // 3. Total des dépenses de l'année en cours
+        $totalYearExpenses = \App\Models\Expense::where('boutique_id', $boutiqueId)
+            ->whereYear('expense_date', date('Y'))
+            ->sum('amount');
 
-    // 4. Valeur totale du stock actuel (Quantité * Prix d'achat)
-    $stockValue = \App\Models\Product::where('boutique_id', $boutiqueId)
-        ->select(DB::raw('SUM(quantity * purchase_price) as total_value'))
-        ->value('total_value') ?? 0;
+        // 4. Valeur totale du stock actuel (Quantité * Prix d'achat)
+        $stockValue = \App\Models\Product::where('boutique_id', $boutiqueId)
+            ->select(DB::raw('SUM(quantity * purchase_price) as total_value'))
+            ->value('total_value') ?? 0;
 
-    // 5. Statistiques de vente par mois
-    $monthlyStats = DB::table('movements')
-        ->join('movement_products', 'movements.id', '=', 'movement_products.movement_id')
-        ->join('products', 'movement_products.product_id', '=', 'products.id')
-        ->where('movements.boutique_id', $boutiqueId)
-        ->where('movements.type', 'sortie')
-        ->whereYear('movements.created_at', date('Y'))
-        ->select(
-            DB::raw('MONTH(movements.created_at) as month'),
-            DB::raw('YEAR(movements.created_at) as year'),
-            DB::raw('SUM(ABS(movement_products.qty) * products.selling_price) as total_revenue'),
-            DB::raw('SUM(ABS(movement_products.qty) * (products.selling_price - products.purchase_price)) as total_profit')
-        )
-        ->groupBy('year', 'month')
-        ->orderBy('month', 'DESC')
-        ->get();
+        // 5. Statistiques de vente par mois
+        // MONTH()/YEAR() sont des fonctions MySQL, absentes de SQLite.
+        // On adapte l'expression SQL selon le driver actif pour que ça marche sur les deux.
+        $driver = DB::connection()->getDriverName();
 
-    return view('reports.annual', compact(
-        'initialFund',
-        'currentCashBalance',
-        'totalYearExpenses',
-        'stockValue',
-        'monthlyStats'
-    ));
-}
+        if ($driver === 'sqlite') {
+            $monthExpr = "CAST(strftime('%m', movements.created_at) AS INTEGER)";
+            $yearExpr = "CAST(strftime('%Y', movements.created_at) AS INTEGER)";
+        } else {
+            $monthExpr = 'MONTH(movements.created_at)';
+            $yearExpr = 'YEAR(movements.created_at)';
+        }
+
+        $monthlyStats = DB::table('movements')
+            ->join('movement_products', 'movements.id', '=', 'movement_products.movement_id')
+            ->join('products', 'movement_products.product_id', '=', 'products.id')
+            ->where('movements.boutique_id', $boutiqueId)
+            ->where('movements.type', 'sortie')
+            ->whereYear('movements.created_at', date('Y'))
+            ->select(
+                DB::raw("{$monthExpr} as month"),
+                DB::raw("{$yearExpr} as year"),
+                DB::raw('SUM(ABS(movement_products.qty) * products.selling_price) as total_revenue'),
+                DB::raw('SUM(ABS(movement_products.qty) * (products.selling_price - products.purchase_price)) as total_profit')
+            )
+            ->groupBy('year', 'month')
+            ->orderBy('month', 'DESC')
+            ->get();
+
+        return view('reports.annual', compact(
+            'initialFund',
+            'currentCashBalance',
+            'totalYearExpenses',
+            'stockValue',
+            'monthlyStats'
+        ));
+    }
 }
