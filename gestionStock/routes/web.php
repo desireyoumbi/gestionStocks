@@ -200,3 +200,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/stock/scan/process', [StockScanController::class, 'processScan'])->name('stock.scan.process');
     Route::post('/stock/movement/store', [StockScanController::class, 'storeMovement'])->name('stock.movement.store');
 });
+
+// verifier les user de la db
+// routes/web.php — À SUPPRIMER après debug !
+Route::get('/debug-users', function () {
+    return response()->json(\App\Models\User::all());
+});
