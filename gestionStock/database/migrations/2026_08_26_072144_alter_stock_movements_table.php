@@ -6,30 +6,29 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
+        // SQLite ne supporte pas la suppression de clés étrangères après coup
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         Schema::table('stock_movements', function (Blueprint $table) {
-            // 1. Supprimer les anciennes contraintes de clés étrangères
-            // (Laravel nomme généralement la contrainte : nom_de_table_nom_colonne_foreign)
             $table->dropForeign(['product_id']);
             $table->dropForeign(['user_id']);
 
-            // 2. Recréer les clés étrangères avec restrictOnDelete()
             $table->foreign('product_id')->references('id')->on('products')->restrictOnDelete();
             $table->foreign('user_id')->references('id')->on('users')->restrictOnDelete();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         Schema::table('stock_movements', function (Blueprint $table) {
-            // Pour revenir en arrière si besoin (remet en cascade)
             $table->dropForeign(['product_id']);
             $table->dropForeign(['user_id']);
 

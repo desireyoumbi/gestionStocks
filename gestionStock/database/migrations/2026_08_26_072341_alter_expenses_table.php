@@ -11,6 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+
+         // SQLite ne supporte pas la suppression de clés étrangères après coup
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         Schema::table('expenses', function (Blueprint $table) {
             // Supprimer l'ancienne contrainte sur user_id
             $table->dropForeign(['user_id']);
@@ -25,6 +31,12 @@ return new class extends Migration
      */
     public function down(): void
     {
+
+         // SQLite ne supporte pas la suppression de clés étrangères après coup
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+        
         Schema::table('expenses', function (Blueprint $table) {
             // Revenir en arrière si besoin (remet en cascade)
             $table->dropForeign(['user_id']);
