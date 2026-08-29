@@ -321,60 +321,36 @@
     <!-- POPUP MODALE : Code de connexion unique -->
     @if(session('new_user_code'))
         <div id="codeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div class="bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full mx-auto transform transition-all space-y-5 text-center">
-                
-                <div class="flex items-center justify-center w-14 h-14 mx-auto bg-amber-500/10 text-amber-500 rounded-2xl border border-amber-500/20 shadow-inner">
-                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-
-                <div class="space-y-2">
-                    <h3 class="text-lg font-bold text-white">⚠️ TRÈS IMPORTANT</h3>
-                    <p class="text-xs text-gray-400">Voici le code d'accès unique généré pour le nouvel utilisateur. Notez-le bien, il ne sera plus affiché.</p>
-                </div>
-
-                <div class="p-4 bg-gray-950 border border-gray-800 rounded-2xl font-mono text-xl font-bold tracking-widest text-amber-500" style="color: var(--primary);">
-                    {{ session('new_user_code') }}
-                </div>
-
-                <button onclick="document.getElementById('codeModal').remove()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-900 font-bold text-xs rounded-xl transition shadow-lg shadow-amber-500/20" style="background-color: var(--primary);">
-                    J'ai bien noté le code
-                </button>
+            <div class="bg-gray-900 border border-gray-800 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl">
+                <!-- Contenu de la modale -->
             </div>
         </div>
     @endif
 
+    <!-- SCRIPT DE GESTION DU MENU LATÉRAL MOBILE -->
     <script>
-        // Fonction globale pour basculer le thème
-        function setTheme(theme) {
-            const html = document.documentElement;
-            const lightBtn = document.getElementById('theme-light-btn');
-            const darkBtn = document.getElementById('theme-dark-btn');
+        document.addEventListener('DOMContentLoaded', function () {
+            const sidebar = document.getElementById('app-sidebar');
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const sidebarClose = document.getElementById('sidebar-close');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
 
-            if (theme === 'dark') {
-                html.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-                
-                if (lightBtn && darkBtn) {
-                    lightBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs text-gray-400 hover:text-white";
-                    darkBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs bg-gray-800 text-white font-semibold shadow-sm";
-                }
-            } else {
-                html.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-                
-                if (lightBtn && darkBtn) {
-                    lightBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs bg-white text-gray-900 font-semibold shadow-sm";
-                    darkBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs text-gray-400 hover:text-white";
-                }
+            function toggleSidebar() {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
             }
-        }
 
-        // Initialisation du thème au chargement de la page selon le localStorage
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            setTheme(savedTheme);
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', toggleSidebar);
+            }
+
+            if (sidebarClose) {
+                sidebarClose.addEventListener('click', toggleSidebar);
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', toggleSidebar);
+            }
         });
     </script>
 </body>
