@@ -104,7 +104,7 @@
     </div>
 
     <!-- ================= PANNEAU DROIT (formulaire) ================= -->
-    <div class="w-full lg:w-[55%] min-h-screen flex items-center justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-24 bg-indigo-50/50 lg:bg-white">
+    <div class="w-full lg:w-[55%] min-h-screen flex items-center justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-24 bg-[#121620] lg:bg-white">
         <div class="max-w-md w-full bg-white lg:bg-transparent p-6 sm:p-8 rounded-3xl lg:rounded-none shadow-xl lg:shadow-none border border-slate-100 lg:border-none">
 
             <!-- Logo mobile uniquement -->
