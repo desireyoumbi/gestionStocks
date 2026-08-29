@@ -22,6 +22,21 @@
         .border-custom-primary { border-color: var(--primary); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* --- CORRECTION GLOBALE DU MODE SOMBRE POUR LES FORMULAIRES --- */
+        html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+        html.dark select,
+        html.dark textarea {
+            background-color: #111827 !important; /* bg-gray-900 */
+            color: #f9fafb !important;            /* text-gray-50 */
+            border-color: #374151 !important;     /* border-gray-700 */
+        }
+
+        /* Correction des placeholders en mode dark */
+        html.dark input::placeholder,
+        html.dark textarea::placeholder {
+            color: #9ca3af !important;            /* text-gray-400 */
+        }
     </style>
 </head>
 <body class="bg-amber-100/50 dark:bg-gray-900 font-sans antialiased text-gray-800 dark:text-gray-100 transition-colors duration-200">
@@ -315,90 +330,51 @@
                 </div>
 
                 <div class="space-y-2">
-                    <h3 class="text-lg font-bold text-white">⚠️ TRÈS IMPORTANT : Note ton code !</h3>
-                    <p class="text-xs text-gray-400 leading-relaxed">
-                        Pour te reconnecter la prochaine fois à ta boutique, <strong class="text-gray-200">tu n'utiliseras pas ton email</strong>, mais ce code de connexion unique :
-                    </p>
-                    
-                    <div class="py-4 px-6 bg-gray-950 border-2 border-dashed border-amber-500/40 rounded-2xl my-3 shadow-inner">
-                        <span class="text-2xl sm:text-3xl font-mono font-black tracking-widest text-amber-400 select-all">
-                            {{ session('new_user_code') }}
-                        </span>
-                    </div>
-
-                    <p class="text-[11px] text-rose-400 font-medium bg-rose-500/10 py-2 px-3 rounded-xl border border-rose-500/20">
-                        Prends un stylo et note-le précieusement. Tu en auras absolument besoin pour accéder à ton espace.
-                    </p>
+                    <h3 class="text-lg font-bold text-white">⚠️ TRÈS IMPORTANT</h3>
+                    <p class="text-xs text-gray-400">Voici le code d'accès unique généré pour le nouvel utilisateur. Notez-le bien, il ne sera plus affiché.</p>
                 </div>
 
-                <button onclick="document.getElementById('codeModal').style.display='none'" 
-                        class="w-full py-3 px-4 rounded-xl text-gray-900 font-bold text-xs shadow-lg transition transform active:scale-95 bg-amber-500 hover:bg-amber-400"
-                        style="background-color: var(--primary);">
-                    C'est bon, j'ai noté
+                <div class="p-4 bg-gray-950 border border-gray-800 rounded-2xl font-mono text-xl font-bold tracking-widest text-amber-500" style="color: var(--primary);">
+                    {{ session('new_user_code') }}
+                </div>
+
+                <button onclick="document.getElementById('codeModal').remove()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-900 font-bold text-xs rounded-xl transition shadow-lg shadow-amber-500/20" style="background-color: var(--primary);">
+                    J'ai bien noté le code
                 </button>
             </div>
         </div>
     @endif
 
-    <!-- SCRIPTS POUR LE MENU MOBILE ET LES THÈMES AVEC INDICATEUR VISUEL -->
     <script>
-        function setTheme(mode) {
+        // Fonction globale pour basculer le thème
+        function setTheme(theme) {
             const html = document.documentElement;
             const lightBtn = document.getElementById('theme-light-btn');
             const darkBtn = document.getElementById('theme-dark-btn');
 
-            if (mode === 'dark') {
+            if (theme === 'dark') {
                 html.classList.add('dark');
                 localStorage.setItem('theme', 'dark');
                 
-                if (darkBtn && lightBtn) {
-                    darkBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs font-bold text-gray-900 bg-amber-500 shadow-md";
-                    darkBtn.style.backgroundColor = "var(--primary)";
-                    
-                    lightBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs font-medium text-gray-400 hover:text-white";
-                    lightBtn.style.backgroundColor = "";
+                if (lightBtn && darkBtn) {
+                    lightBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs text-gray-400 hover:text-white";
+                    darkBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs bg-gray-800 text-white font-semibold shadow-sm";
                 }
             } else {
                 html.classList.remove('dark');
                 localStorage.setItem('theme', 'light');
                 
-                if (darkBtn && lightBtn) {
-                    lightBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs font-bold text-gray-900 bg-amber-500 shadow-md";
-                    lightBtn.style.backgroundColor = "var(--primary)";
-                    
-                    darkBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs font-medium text-gray-400 hover:text-white";
-                    darkBtn.style.backgroundColor = "";
+                if (lightBtn && darkBtn) {
+                    lightBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs bg-white text-gray-900 font-semibold shadow-sm";
+                    darkBtn.className = "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs text-gray-400 hover:text-white";
                 }
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            // Restauration du thème enregistré ou mode sombre par défaut
+        // Initialisation du thème au chargement de la page selon le localStorage
+        document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme') || 'dark';
             setTheme(savedTheme);
-
-            // Gestion du menu hamburger mobile
-            const hamburgerBtn = document.getElementById('hamburger-btn');
-            const sidebar = document.getElementById('app-sidebar');
-            const sidebarClose = document.getElementById('sidebar-close');
-            const overlay = document.getElementById('sidebar-overlay');
-
-            function toggleSidebar() {
-                sidebar.classList.toggle('-translate-x-full');
-                overlay.classList.toggle('hidden');
-            }
-
-            if (hamburgerBtn) {
-                hamburgerBtn.addEventListener('click', toggleSidebar);
-            }
-
-            if (sidebarClose) {
-                sidebarClose.addEventListener('click', toggleSidebar);
-            }
-
-            if (overlay) {
-                overlay.addEventListener('click', toggleSidebar);
-            }
         });
     </script>
 </body>
