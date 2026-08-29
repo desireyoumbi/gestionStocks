@@ -243,7 +243,7 @@
 
                     <img
                         src="{{ asset('images/logo.png') }}"
-                        alt="Logo e-Stoky"
+                        alt="Logo e-Stockly"
                         class="w-full h-auto block"
                         style="
                             transform: scale(1.55);
@@ -313,7 +313,7 @@
                     href="#pourquoi"
                     class="text-slate-600 hover:text-orange-500 transition"
                 >
-                    Pourquoi e-Stoky
+                    Pourquoi e-Stockly
                 </a>
 
                 <a
@@ -434,7 +434,7 @@
                 @click="mobileMenu = false"
                 class="font-semibold"
             >
-                Pourquoi e-Stoky
+                Pourquoi e-Stockly
             </a>
 
             <a
@@ -568,7 +568,7 @@
                            text-slate-600
                            max-w-xl"
                 >
-                    e-Stoky vous permet de centraliser
+                    e-Stockly vous permet de centraliser
                     vos produits, vos ventes, vos mouvements,
                     vos dépenses et votre activité dans
                     un seul espace de gestion.
@@ -599,7 +599,7 @@
                                transition"
                     >
 
-                        Découvrir e-Stoky
+                        Découvrir e-Stockly
 
                         <svg
                             class="w-5 h-5"
@@ -756,7 +756,7 @@
 
                             <img
                                 src="{{ asset('images/dashboard-preview.png') }}"
-                                alt="Aperçu du tableau de bord e-Stoky"
+                                alt="Aperçu du tableau de bord e-Stockly"
                                 class="w-full h-auto block"
                             >
 
@@ -824,7 +824,7 @@
 
                             <img
                                 src="{{ asset('images/dashboard-preview.png') }}"
-                                alt="Aperçu d'e-Stoky sur téléphone"
+                                alt="Aperçu d'e-Stockly sur téléphone"
                                 class="w-full
                                        h-[300px]
                                        sm:h-[360px]
@@ -1156,7 +1156,7 @@
 
             <p class="font-bold text-slate-800">
 
-                e-Stoky rassemble ces informations dans
+                e-Stockly rassemble ces informations dans
                 un même espace afin de vous donner une vision
                 claire de votre activité.
 
@@ -1373,7 +1373,7 @@
                        font-black
                        tracking-tight"
             >
-                Comment fonctionne e-Stoky ?
+                Comment fonctionne e-Stockly ?
             </h2>
 
         </div>
@@ -1666,7 +1666,7 @@
                        text-lg"
             >
                 Découvrez les principales interfaces
-                d'e-Stoky avant même de créer votre boutique.
+                d'e-Stockly avant même de créer votre boutique.
             </p>
 
         </div>
@@ -1770,7 +1770,7 @@
 
                         <img
                             src="{{ asset('images/dashboard-preview.png') }}"
-                            alt="Tableau de bord e-Stoky"
+                            alt="Tableau de bord e-Stockly"
                             class="w-full block"
                         >
 
@@ -1787,7 +1787,7 @@
 
                         <img
                             src="{{ asset('images/products-preview.png') }}"
-                            alt="Gestion des produits e-Stoky"
+                            alt="Gestion des produits e-Stockly"
                             class="w-full h-auto block"
                         >
 
@@ -1804,7 +1804,7 @@
 
                         <img
                             src="{{ asset('images/sales-preview.png') }}"
-                            alt="Suivi des ventes e-Stoky"
+                            alt="Suivi des ventes e-Stockly"
                             class="w-full h-auto block"
                         >
 
@@ -1821,7 +1821,7 @@
 
                         <img
                             src="{{ asset('images/reports-preview.png') }}"
-                            alt="Rapports et analyses e-Stoky"
+                            alt="Rapports et analyses e-Stockly"
                             class="w-full h-auto block"
                         >
 
@@ -2051,7 +2051,7 @@
 
 
 <!-- ========================================================= -->
-<!-- POURQUOI e-STOKY -->
+<!-- POURQUOI e-Stockly -->
 <!-- ========================================================= -->
 
 <section
@@ -2077,7 +2077,7 @@
                        uppercase
                        tracking-[.18em]"
             >
-                Pourquoi e-Stoky ?
+                Pourquoi e-Stockly ?
             </span>
 
 
@@ -2303,7 +2303,7 @@
                                text-slate-400
                                leading-7"
                     >
-                        e-Stoky intègre une gestion des utilisateurs,
+                        e-Stockly intègre une gestion des utilisateurs,
                         des rôles et des accès afin de mieux contrôler
                         votre espace.
                     </p>
@@ -2499,8 +2499,8 @@
             $questions = [
 
                 [
-                    'q' => 'Qu’est-ce qu’e-Stoky ?',
-                    'a' => 'e-Stoky est une plateforme de gestion qui permet de centraliser les informations liées à votre stock et à votre activité.'
+                    'q' => 'Qu’est-ce qu’e-Stockly ?',
+                    'a' => 'e-Stockly est une plateforme de gestion qui permet de centraliser les informations liées à votre stock et à votre activité.'
                 ],
 
                 [
@@ -2519,8 +2519,8 @@
                 ],
 
                 [
-                    'q' => 'Dois-je être informaticien pour utiliser e-Stoky ?',
-                    'a' => 'Non. L’objectif d’e-Stoky est justement de proposer une gestion accessible et simple à utiliser.'
+                    'q' => 'Dois-je être informaticien pour utiliser e-Stockly ?',
+                    'a' => 'Non. L’objectif d’e-Stockly est justement de proposer une gestion accessible et simple à utiliser.'
                 ],
 
             ];
@@ -2686,7 +2686,7 @@
                            text-lg
                            leading-8"
                 >
-                    Créez votre espace e-Stoky,
+                    Créez votre espace e-Stockly,
                     configurez votre activité et commencez
                     à mieux gérer votre quotidien.
                 </p>
@@ -2777,7 +2777,7 @@
 
                     <img
                         src="{{ asset('images/logo.png') }}"
-                        alt="e-Stoky — Gestion de stock centralisée"
+                        alt="e-Stockly — Gestion de stock centralisée"
                         class="h-16
                                w-auto
                                object-contain"
@@ -2919,7 +2919,7 @@
 
             <p>
                 © {{ date('Y') }}
-                e-Stoky.
+                e-Stockly.
                 Tous droits réservés.
             </p>
 
