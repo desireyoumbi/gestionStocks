@@ -190,10 +190,10 @@ Route::middleware(['auth'])->group(function () {
 
     //
     // Afficher la page du scanner
-    Route::get('/stock/scan', [StockScanController::class, 'index'])->name('stock.scan.index');
+    // Route::get('/stock/scan', [StockScanController::class, 'index'])->name('stock.scan.index');
 
     // Traiter le code scanné
-    Route::post('/stock/scan', [StockScanController::class, 'processScan'])->name('stock.scan.process');
+    // Route::post('/stock/scan', [StockScanController::class, 'processScan'])->name('stock.scan.process');
 
     //
     Route::get('/stock/scan', [StockScanController::class, 'index'])->name('stock.scan.index');
