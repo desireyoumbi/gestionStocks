@@ -109,7 +109,7 @@
 
             <!-- Logo mobile uniquement -->
             <div class="flex items-center gap-2 mb-8 lg:hidden">
-                <img src="{{ asset('images/logo.jpeg') }}" alt="Logo E-Stockly" class="w-9 h-9 rounded-lg object-cover object-top">
+                <img src="{{ asset('images/logo.png') }}" alt="Logo E-Stockly" class="w-9 h-9 rounded-lg object-cover object-top">
                 <span class="font-bold text-slate-900 text-lg">E-Stockly</span>
             </div>
 
