@@ -79,7 +79,7 @@ class UserController extends Controller
             'phone' => [
                 'required',
                 'string',
-                'max:9',
+                'max:15',
                 Rule::unique('users', 'phone')->where('boutique_id', $boutiqueId),
             ],
             'email' => [
@@ -97,7 +97,7 @@ class UserController extends Controller
         ]);
 
         $validated['boutique_id'] = $boutiqueId;
-        $validated['password'] = Hash::make($validated['password']);
+        $validated['password'] = $request->password;
         $validated['doit_changer_mdp'] = true;
 
         // Génération d'un code de connexion explicite et unique (ex: QUIN-4812)
@@ -153,7 +153,7 @@ class UserController extends Controller
 
         $validate = $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:9',
+            'phone' => 'required|string|max:15',
             'email' => 'nullable|string|email|max:255',
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'required|string|in:administrateur,vice_administrateur,vendeur',
