@@ -37,6 +37,16 @@
         <div class="bg-white dark:bg-gray-950 p-7 rounded-3xl shadow-xl border border-slate-100 dark:border-gray-800 space-y-5">
             <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Informations personnelles</h2>
 
+            {{-- Code de connexion (lecture seule) --}}
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Code de connexion</label>
+                <div class="flex items-center gap-3">
+                    <input type="text" value="{{ $user->code_connexion }}" readonly disabled
+                        class="w-full bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm font-mono font-bold tracking-widest text-amber-600 dark:text-amber-500 opacity-90 cursor-not-allowed">
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1.5">Ce code sert à vous connecter. Il ne peut pas être modifié ici.</p>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {{-- Nom --}}
                 <div>
@@ -49,9 +59,9 @@
                 {{-- Téléphone --}}
                 <div>
                     <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Numéro de téléphone</label>
-                    <input type="text" name="telephone" value="{{ old('telephone', $user->telephone) }}" placeholder="Ex: +237 6..."
+                    <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" maxlength="15" placeholder="Ex: +237 6..."
                         class="w-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 transition">
-                    @error('telephone') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    @error('phone') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
             </div>
 

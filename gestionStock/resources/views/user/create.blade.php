@@ -33,8 +33,8 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {{-- Téléphone --}}
                 <div>
-                    <label for="phone" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Téléphone * <span class="normal-case font-normal text-slate-400">(max 9 car.)</span></label>
-                    <input type="text" name="phone" id="phone" value="{{ old('phone') }}" required maxlength="9" 
+                    <label for="phone" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Téléphone * <span class="normal-case font-normal text-slate-400">(max 15 car.)</span></label>
+                    <input type="text" name="phone" id="phone" value="{{ old('phone') }}" required maxlength="15" 
                         class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition" 
                         placeholder="Ex: 699000000">
                     @error('phone') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror

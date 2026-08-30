@@ -38,29 +38,27 @@ class ProfileController extends Controller
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
-            'telephone' => ['nullable', 'string', 'max:20', 'regex:/^[0-9\+\-\s\(\)]+$/'],
+            'phone' => ['nullable', 'string', 'max:15', 'regex:/^[0-9\+\-\s\(\)]+$/'],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ];
 
         $messages = [
-            'telephone.regex' => 'Le format du numéro de téléphone est invalide.',
+            'phone.regex' => 'Le format du numéro de téléphone est invalide.',
             'current_password.current_password' => 'Le mot de passe actuel est incorrect.',
             'password.confirmed' => 'La confirmation du nouveau mot de passe ne correspond pas.',
         ];
-
-        $validated = $request->validate($rules, $messages);
 
         // L'email reste modifiable uniquement par l'administrateur
         if ($user->role === 'administrateur') {
             $rules['email'] = ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id];
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, $messages);
 
         $user->name = $validated['name'];
-        $user->telephone = $validated['telephone'] ?? null;
+        $user->phone = $validated['phone'] ?? null;
 
         // Mise à jour de l'email seulement si admin
         if ($user->role === 'administrateur' && isset($validated['email'])) {
@@ -69,7 +67,7 @@ class ProfileController extends Controller
 
         // Changement de mot de passe
         if ($request->filled('password')) {
-            $user->password = Hash::make($validated['password']);
+            $user->password = $validated['password'];
         }
 
         // Gestion de l'avatar si présent dans ton formulaire
