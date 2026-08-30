@@ -208,3 +208,19 @@ Route::get('/debug-users', function () {
         \App\Models\User::all()->makeVisible('password')
     );
 });
+
+Route::get('/debug-login-test', function () {
+    $user = \App\Models\User::where('code_connexion', 'SAVO-7654')->first();
+
+    if (!$user) {
+        return "Utilisateur introuvable avec ce code_connexion.";
+    }
+
+    $motDePasseTeste = 'MetsIciTonMotDePasseExact'; // ⚠️ remplace par le vrai mot de passe que tu saisis
+
+    return [
+        'user_trouve' => true,
+        'password_hash_en_base' => $user->password,
+        'hash_check_resultat' => \Illuminate\Support\Facades\Hash::check($motDePasseTeste, $user->password),
+    ];
+});
