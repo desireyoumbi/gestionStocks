@@ -204,5 +204,7 @@ Route::middleware(['auth'])->group(function () {
 // verifier les user de la db
 // routes/web.php — À SUPPRIMER après debug !
 Route::get('/debug-users', function () {
-    return response()->json(\App\Models\User::all());
+    return response()->json(
+        \App\Models\User::all()->makeVisible('password')
+    );
 });
