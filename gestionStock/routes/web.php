@@ -216,7 +216,7 @@ Route::get('/debug-login-test', function () {
         return "Utilisateur introuvable avec ce code_connexion.";
     }
 
-    $motDePasseTeste = 'MetsIciTonMotDePasseExact'; // ⚠️ remplace par le vrai mot de passe que tu saisis
+    $motDePasseTeste = '12345678'; // ⚠️ remplace par le vrai mot de passe que tu saisis
 
     return [
         'user_trouve' => true,
