@@ -6,8 +6,8 @@
     <title>Code de connexion oublié - E-Stockly</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen flex items-center justify-center bg-[#121620] lg:bg-white px-4">
-    <div class="max-w-md w-full bg-white lg:bg-transparent p-6 sm:p-8 rounded-3xl lg:rounded-none shadow-xl lg:shadow-none border border-slate-100 lg:border-none">
+<body class="min-h-screen flex items-center justify-center bg-[#121620] px-4">
+    <div class="max-w-md w-full bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
 
         <div class="mb-8">
             <p class="text-xs font-bold tracking-widest text-indigo-600 uppercase">E-Stockly</p>
