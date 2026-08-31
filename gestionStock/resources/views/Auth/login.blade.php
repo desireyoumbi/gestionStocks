@@ -118,6 +118,13 @@
                 <p class="text-sm text-slate-500 mt-2">Entrez votre code unique pour accéder à votre espace.</p>
             </div>
 
+            <!-- Affichage du message de succès (ex: après réinitialisation du mot de passe / code) -->
+            @if (session('success'))
+                <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg text-sm text-emerald-700 mb-6">
+                    {{ session('success') }}
+                </div>
+            @endif
+
             <!-- Affichage des erreurs globales de validation -->
             @if ($errors->any())
                 <div class="bg-red-50 border border-red-200 p-4 rounded-lg text-sm text-red-700 mb-6">
