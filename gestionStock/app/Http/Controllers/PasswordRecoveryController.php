@@ -15,7 +15,7 @@ class PasswordRecoveryController extends Controller
      */
     public function showPhoneForm()
     {
-        return view('auth.forgot-password');
+        return view('Auth.forgot-password');
     }
 
     /**
@@ -49,7 +49,7 @@ class PasswordRecoveryController extends Controller
             return $this->confirmAccount($request, $comptesAvecEmail->first());
         }
 
-        return view('auth.select-account', ['comptes' => $comptesAvecEmail]);
+        return view('Auth.select-account', ['comptes' => $comptesAvecEmail]);
     }
 
     /**
