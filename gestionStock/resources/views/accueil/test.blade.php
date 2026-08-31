@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>e-Stoky — Gérez votre stock, maîtrisez votre activité</title>
+    <title>e-Stockly — Gérez votre stock, maîtrisez votre activité</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -265,7 +265,7 @@
                                tracking-tight
                                text-slate-950"
                     >
-                        e-<span class="text-orange-500">Stoky</span>
+                        e-<span class="text-orange-500">Stockly</span>
                     </div>
 
                     <div

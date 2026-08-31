@@ -6,6 +6,7 @@ use App\Models\Boutique;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage; // <-- N'oublie pas d'importer Storage
 
@@ -83,4 +84,48 @@ class BoutiqueSettingsController extends Controller
 
         return redirect()->route('register')->with('success', 'La boutique et tous les comptes associés ont été supprimés définitivement.');
     }
+
+    // À ajouter dans BoutiqueSettingsController.php, avant la fermeture de la classe
+
+/**
+ * Transfère les droits d'administrateur principal à un autre membre du staff.
+ * L'ancien administrateur devient vice_administrateur, le membre choisi devient administrateur.
+ */
+// public function transferOwnership(Request $request)
+// {
+//     $currentUser = Auth::user();
+
+//     if ($currentUser->role !== 'administrateur') {
+//         abort(403, "Seul l'administrateur peut transférer la propriété de la boutique.");
+//     }
+
+//     $request->validate([
+//         'new_admin_id' => 'required|exists:users,id',
+//         'password' => ['required', 'current_password'],
+//     ]);
+
+//     $nouveauAdmin = User::findOrFail($request->new_admin_id);
+
+//     // Sécurité : le nouvel admin doit appartenir à la même boutique
+//     if ($nouveauAdmin->boutique_id !== $currentUser->boutique_id) {
+//         abort(404, "Utilisateur introuvable.");
+//     }
+
+//     if ($nouveauAdmin->id === $currentUser->id) {
+//         return back()->with('error', "Vous ne pouvez pas vous transférer la propriété à vous-même.");
+//     }
+
+//     DB::transaction(function () use ($currentUser, $nouveauAdmin) {
+//         // L'ancien administrateur devient vice_administrateur
+//         $currentUser->role = 'vice_administrateur';
+//         $currentUser->save();
+
+//         // Le membre choisi devient le nouvel administrateur
+//         $nouveauAdmin->role = 'administrateur';
+//         $nouveauAdmin->save();
+//     });
+
+//     return redirect()->route('dashboard')
+//         ->with('success', "La propriété de la boutique a été transférée à {$nouveauAdmin->name}. Vous êtes maintenant Vice-Administrateur.");
+// }
 }
