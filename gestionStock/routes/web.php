@@ -7,10 +7,12 @@ use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\BoutiqueSettingsController;
 use App\Http\Controllers\CashMovementController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CodeConnexionRecoveryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\MovementController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PasswordRecoveryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -201,26 +203,55 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/stock/movement/store', [StockScanController::class, 'storeMovement'])->name('stock.movement.store');
 });
 
+
+// ============================================
+// RÉCUPÉRATION DE MOT DE PASSE (à ajouter dans routes/web.php)
+// ============================================
+
+
+Route::get('/mot-de-passe-oublie', [PasswordRecoveryController::class, 'showPhoneForm'])
+    ->name('password.request');
+
+Route::post('/mot-de-passe-oublie', [PasswordRecoveryController::class, 'findAccounts'])
+    ->name('password.find-accounts');
+
+Route::post('/mot-de-passe-oublie/confirmer/{user}', [PasswordRecoveryController::class, 'confirmAccount'])
+    ->name('password.confirm-account');
+
+    // ============================================
+// RÉCUPÉRATION DU CODE DE CONNEXION (à ajouter dans routes/web.php)
+// ============================================
+
+
+Route::get('/code-connexion-oublie', [CodeConnexionRecoveryController::class, 'showPhoneForm'])
+    ->name('code-connexion.request');
+
+Route::post('/code-connexion-oublie', [CodeConnexionRecoveryController::class, 'findAccounts'])
+    ->name('code-connexion.find-accounts');
+
+Route::post('/code-connexion-oublie/confirmer/{user}', [CodeConnexionRecoveryController::class, 'confirmAccount'])
+    ->name('code-connexion.confirm-account');
+
 // verifier les user de la db
 // routes/web.php — À SUPPRIMER après debug !
-Route::get('/debug-users', function () {
-    return response()->json(
-        \App\Models\User::all()->makeVisible('password')
-    );
-});
+// Route::get('/debug-users', function () {
+//     return response()->json(
+//         \App\Models\User::all()->makeVisible('password')
+//     );
+// });
 
-Route::get('/debug-login-test', function () {
-    $user = \App\Models\User::where('code_connexion', 'SAVO-7654')->first();
+// Route::get('/debug-login-test', function () {
+//     $user = \App\Models\User::where('code_connexion', 'SAVO-7654')->first();
 
-    if (!$user) {
-        return "Utilisateur introuvable avec ce code_connexion.";
-    }
+//     if (!$user) {
+//         return "Utilisateur introuvable avec ce code_connexion.";
+//     }
 
-    $motDePasseTeste = '12345678'; // ⚠️ remplace par le vrai mot de passe que tu saisis
+//     $motDePasseTeste = '12345678'; // ⚠️ remplace par le vrai mot de passe que tu saisis
 
-    return [
-        'user_trouve' => true,
-        'password_hash_en_base' => $user->password,
-        'hash_check_resultat' => \Illuminate\Support\Facades\Hash::check($motDePasseTeste, $user->password),
-    ];
-});
+//     return [
+//         'user_trouve' => true,
+//         'password_hash_en_base' => $user->password,
+//         'hash_check_resultat' => \Illuminate\Support\Facades\Hash::check($motDePasseTeste, $user->password),
+//     ];
+// });
