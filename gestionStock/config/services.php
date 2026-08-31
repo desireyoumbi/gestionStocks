@@ -30,10 +30,14 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
-      // nouvelle ligne ajouter pour configure le mot de passe de clerk
+    // nouvelle ligne ajouter pour configure le mot de passe de clerk
     'clerk' => [
-    'webhook_secret' => env('CLERK_WEBHOOK_SECRET'),
-    'jwks_url' => env('CLERK_JWKS_URL'),
+        'webhook_secret' => env('CLERK_WEBHOOK_SECRET'),
+        'jwks_url' => env('CLERK_JWKS_URL'),
+    ],
+    'brevo' => [
+        'api_key' => env('BREVO_API_KEY'),
+        'sender_email' => env('BREVO_SENDER_EMAIL', 'noreply@e-stockly.com'),
     ],
 
 ];

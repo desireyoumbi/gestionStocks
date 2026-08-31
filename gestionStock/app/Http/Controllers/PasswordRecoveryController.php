@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Mail\PasswordResetMail;
+use App\Services\BrevoMailer;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 
 class PasswordRecoveryController extends Controller
@@ -15,7 +15,7 @@ class PasswordRecoveryController extends Controller
      */
     public function showPhoneForm()
     {
-        return view('Auth.forgot-password');
+        return view('auth.forgot-password');
     }
 
     /**
@@ -35,8 +35,6 @@ class PasswordRecoveryController extends Controller
             ])->onlyInput('phone');
         }
 
-        // On ne garde que les comptes ayant un email renseigné :
-        // ce sont les seuls pour lesquels une récupération automatique est possible.
         $comptesAvecEmail = $comptes->whereNotNull('email')->values();
 
         if ($comptesAvecEmail->isEmpty()) {
@@ -45,27 +43,23 @@ class PasswordRecoveryController extends Controller
             ])->onlyInput('phone');
         }
 
-        // On mémorise en session UNIQUEMENT les comptes déjà validés par ce numéro de téléphone.
-        // Cela empêche de réinitialiser un compte en manipulant l'ID dans l'URL à l'étape suivante.
         session(['comptes_ids_verifies' => $comptesAvecEmail->pluck('id')->toArray()]);
 
-        // S'il n'y a qu'un seul compte, on saute directement à la confirmation.
         if ($comptesAvecEmail->count() === 1) {
             return $this->confirmAccount($request, $comptesAvecEmail->first());
         }
 
-        return view('Auth.select-account', ['comptes' => $comptesAvecEmail]);
+        return view('auth.select-account', ['comptes' => $comptesAvecEmail]);
     }
 
     /**
-     * Étape 3 : confirmation du compte choisi + envoi du nouveau mot de passe par email.
+     * Étape 3 : confirmation du compte choisi + envoi du nouveau mot de passe par email
+     * via l'API HTTP de Brevo (contourne le blocage SMTP de Render).
      */
     public function confirmAccount(Request $request, User $user)
     {
         $comptesAutorises = session('comptes_ids_verifies', []);
 
-        // Sécurité : le compte ciblé doit obligatoirement faire partie de ceux
-        // déjà validés par le numéro de téléphone à l'étape précédente.
         if (!in_array($user->id, $comptesAutorises) || !$user->email) {
             abort(403, "Sélection de compte invalide.");
         }
@@ -76,7 +70,17 @@ class PasswordRecoveryController extends Controller
         $user->doit_changer_mdp = true;
         $user->save();
 
-        Mail::to($user->email)->send(new PasswordResetMail($user, $nouveauMotDePasse));
+        $contenuHtml = View::make('emails.password-reset', [
+            'user' => $user,
+            'nouveauMotDePasse' => $nouveauMotDePasse,
+        ])->render();
+
+        BrevoMailer::envoyer(
+            $user->email,
+            $user->name,
+            'Réinitialisation de votre mot de passe - E-Stockly',
+            $contenuHtml
+        );
 
         session()->forget('comptes_ids_verifies');
 

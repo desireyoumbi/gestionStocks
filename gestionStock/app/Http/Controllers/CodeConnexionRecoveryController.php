@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Mail\CodeConnexionMail;
+use App\Services\BrevoMailer;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
 
 class CodeConnexionRecoveryController extends Controller
 {
@@ -14,7 +14,7 @@ class CodeConnexionRecoveryController extends Controller
      */
     public function showPhoneForm()
     {
-        return view('Auth.forgot-code-connexion');
+        return view('auth.forgot-code-connexion');
     }
 
     /**
@@ -48,13 +48,12 @@ class CodeConnexionRecoveryController extends Controller
             return $this->confirmAccount($request, $comptesAvecEmail->first());
         }
 
-        return view('Auth.select-account-code', ['comptes' => $comptesAvecEmail]);
+        return view('auth.select-account-code', ['comptes' => $comptesAvecEmail]);
     }
 
     /**
-     * Étape 3 : confirmation du compte choisi + envoi du code de connexion par email.
-     * Contrairement au mot de passe, aucune donnée du compte n'est modifiée ici —
-     * on se contente d'envoyer par email une information déjà existante.
+     * Étape 3 : confirmation du compte choisi + envoi du code de connexion par email
+     * via l'API HTTP de Brevo. Aucune donnée du compte n'est modifiée ici.
      */
     public function confirmAccount(Request $request, User $user)
     {
@@ -64,7 +63,16 @@ class CodeConnexionRecoveryController extends Controller
             abort(403, "Sélection de compte invalide.");
         }
 
-        Mail::to($user->email)->send(new CodeConnexionMail($user));
+        $contenuHtml = View::make('emails.code-connexion', [
+            'user' => $user,
+        ])->render();
+
+        BrevoMailer::envoyer(
+            $user->email,
+            $user->name,
+            'Votre code de connexion - E-Stockly',
+            $contenuHtml
+        );
 
         session()->forget('comptes_ids_verifies_code');
 
