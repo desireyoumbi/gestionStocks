@@ -242,6 +242,13 @@ Route::post('/code-connexion-oublie/confirmer/{user}', [CodeConnexionRecoveryCon
     $dernieresLignes = array_slice($lignes, -150);
     return '<pre>' . htmlspecialchars(implode('', $dernieresLignes)) . '</pre>';
 });
+
+// À ajouter dans routes/web.php, dans le groupe de routes protégées par auth
+
+Route::post('/user/{user}/envoyer-identifiants-email', [UserController::class, 'envoyerIdentifiantsEmail'])
+    ->name('user.envoyer-identifiants-email');
+
+
 // verifier les user de la db
 // routes/web.php — À SUPPRIMER après debug !
 // Route::get('/debug-users', function () {

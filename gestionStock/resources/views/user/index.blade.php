@@ -26,6 +26,11 @@
             <span class="block sm:inline">{{ session('succes') }}</span>
         </div>
     @endif
+    @if(session('success'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative text-sm" role="alert">
+            <span class="block sm:inline">{{ session('success') }}</span>
+        </div>
+    @endif
     @if(session('error'))
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm" role="alert">
             <span class="block sm:inline">{{ session('error') }}</span>
@@ -110,6 +115,26 @@
                             <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 @if($user->id !== Auth::id())
                                     <div class="flex items-center justify-end gap-2">
+                                        {{-- Bouton Envoyer les identifiants par email --}}
+                                        @if($user->email)
+                                            <form action="{{ route('user.envoyer-identifiants-email', $user->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Générer un nouveau mot de passe et l\'envoyer à {{ $user->email }} ?');">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm"
+                                                        title="Envoyer les identifiants par email">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="p-2 bg-gray-50 text-gray-300 rounded-lg cursor-not-allowed" title="Aucun email renseigné pour cet utilisateur">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                            </span>
+                                        @endif
+
                                         {{-- Bouton Modifier --}}
                                         <a href="{{ route('user.edit', $user->id) }}" 
                                            class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm"

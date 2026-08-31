@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\BrevoMailer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class UserController extends Controller
 {
@@ -110,10 +112,13 @@ class UserController extends Controller
 
         $validated['code_connexion'] = $codeConnexion;
 
-        User::create($validated);
+       $nouvelUtilisateur = User::create($validated);
 
         return redirect()->route('user.index')
-            ->with('succes', "Utilisateur créé avec succès. Son code de connexion unique est : {$codeConnexion}");
+    ->with('succes', "Utilisateur créé avec succès. Son code de connexion unique est : {$codeConnexion}")
+    ->with('new_user_code', $codeConnexion)
+    ->with('new_user_id', $nouvelUtilisateur->id);
+
     }
     /**
      * Display the specified resource.
@@ -222,4 +227,45 @@ class UserController extends Controller
         // Télécharger le fichier
         return $pdf->download('liste-utilisateurs-' . date('Y-m-d') . '.pdf');
     }
+
+   
+public function envoyerIdentifiantsEmail(User $user)
+{
+    // Sécurité : seul un administrateur de la même boutique peut déclencher cet envoi
+    if ($user->boutique_id !== Auth::user()->boutique_id) {
+        abort(404, "Utilisateur introuvable.");
+    }
+ 
+    if (Auth::user()->role !== 'administrateur') {
+        abort(403, "Vous n'avez pas l'autorisation d'effectuer cette action.");
+    }
+ 
+    if (!$user->email) {
+        return back()->with('error', "Impossible d'envoyer les identifiants : aucun email n'est renseigné pour cet utilisateur.");
+    }
+ 
+    $nouveauMotDePasse = \Illuminate\Support\Str::random(10);
+    $user->password = $nouveauMotDePasse; // le cast 'hashed' du modèle s'occupe du hachage
+    $user->doit_changer_mdp = true;
+    $user->save();
+ 
+    $contenuHtml = View::make('emails.password-reset', [
+        'user' => $user,
+        'nouveauMotDePasse' => $nouveauMotDePasse,
+    ])->render();
+ 
+    $envoiReussi = BrevoMailer::envoyer(
+        $user->email,
+        $user->name,
+        'Vos identifiants de connexion - E-Stockly',
+        $contenuHtml
+    );
+ 
+    if (!$envoiReussi) {
+        return back()->with('error', "L\'envoi de l\'email a échoué. Réessayez plus tard ou communiquez les identifiants manuellement.");
+    }
+ 
+    return back()->with('success', "Les identifiants ont été envoyés par email à {$user->email}.");
+
+}
 }
