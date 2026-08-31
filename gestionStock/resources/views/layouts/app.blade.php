@@ -338,6 +338,18 @@
                     {{ session('new_user_code') }}
                 </div>
 
+                @if(session('new_user_id'))
+                    <form method="POST" action="{{ route('user.envoyer-identifiants-email', session('new_user_id')) }}">
+                        @csrf
+                        <button type="submit" class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs rounded-xl transition border border-gray-700 flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Envoyer par email
+                        </button>
+                    </form>
+                @endif
+
                 <button onclick="document.getElementById('codeModal').remove()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-900 font-bold text-xs rounded-xl transition shadow-lg shadow-amber-500/20" style="background-color: var(--primary);">
                     J'ai bien noté le code
                 </button>
