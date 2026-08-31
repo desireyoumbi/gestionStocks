@@ -14,7 +14,7 @@ class CodeConnexionRecoveryController extends Controller
      */
     public function showPhoneForm()
     {
-        return view('auth.forgot-code-connexion');
+        return view('Auth.forgot-code-connexion');
     }
 
     /**
@@ -48,7 +48,7 @@ class CodeConnexionRecoveryController extends Controller
             return $this->confirmAccount($request, $comptesAvecEmail->first());
         }
 
-        return view('auth.select-account-code', ['comptes' => $comptesAvecEmail]);
+        return view('Auth.select-account-code', ['comptes' => $comptesAvecEmail]);
     }
 
     /**
