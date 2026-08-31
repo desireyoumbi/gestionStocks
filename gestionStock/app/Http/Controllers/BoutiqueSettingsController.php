@@ -91,41 +91,42 @@ class BoutiqueSettingsController extends Controller
  * Transfère les droits d'administrateur principal à un autre membre du staff.
  * L'ancien administrateur devient vice_administrateur, le membre choisi devient administrateur.
  */
-// public function transferOwnership(Request $request)
-// {
-//     $currentUser = Auth::user();
+public function transferOwnership(Request $request)
+{
+    /** @var \App\Models\User $currentUser */
+    $currentUser = Auth::user();
 
-//     if ($currentUser->role !== 'administrateur') {
-//         abort(403, "Seul l'administrateur peut transférer la propriété de la boutique.");
-//     }
+    if ($currentUser->role !== 'administrateur') {
+        abort(403, "Seul l'administrateur peut transférer la propriété de la boutique.");
+    }
 
-//     $request->validate([
-//         'new_admin_id' => 'required|exists:users,id',
-//         'password' => ['required', 'current_password'],
-//     ]);
+    $request->validate([
+        'new_admin_id' => 'required|exists:users,id',
+        'password' => ['required', 'current_password'],
+    ]);
 
-//     $nouveauAdmin = User::findOrFail($request->new_admin_id);
+    $nouveauAdmin = User::findOrFail($request->new_admin_id);
 
-//     // Sécurité : le nouvel admin doit appartenir à la même boutique
-//     if ($nouveauAdmin->boutique_id !== $currentUser->boutique_id) {
-//         abort(404, "Utilisateur introuvable.");
-//     }
+    // Sécurité : le nouvel admin doit appartenir à la même boutique
+    if ($nouveauAdmin->boutique_id !== $currentUser->boutique_id) {
+        abort(404, "Utilisateur introuvable.");
+    }
 
-//     if ($nouveauAdmin->id === $currentUser->id) {
-//         return back()->with('error', "Vous ne pouvez pas vous transférer la propriété à vous-même.");
-//     }
+    if ($nouveauAdmin->id === $currentUser->id) {
+        return back()->with('error', "Vous ne pouvez pas vous transférer la propriété à vous-même.");
+    }
 
-//     DB::transaction(function () use ($currentUser, $nouveauAdmin) {
-//         // L'ancien administrateur devient vice_administrateur
-//         $currentUser->role = 'vice_administrateur';
-//         $currentUser->save();
+    DB::transaction(function () use ($currentUser, $nouveauAdmin) {
+        // L'ancien administrateur devient vice_administrateur
+        $currentUser->role = 'vice_administrateur';
+        $currentUser->save();
 
-//         // Le membre choisi devient le nouvel administrateur
-//         $nouveauAdmin->role = 'administrateur';
-//         $nouveauAdmin->save();
-//     });
+        // Le membre choisi devient le nouvel administrateur
+        $nouveauAdmin->role = 'administrateur';
+        $nouveauAdmin->save();
+    });
 
-//     return redirect()->route('dashboard')
-//         ->with('success', "La propriété de la boutique a été transférée à {$nouveauAdmin->name}. Vous êtes maintenant Vice-Administrateur.");
-// }
+    return redirect()->route('dashboard')
+        ->with('success', "La propriété de la boutique a été transférée à {$nouveauAdmin->name}. Vous êtes maintenant Vice-Administrateur.");
+}
 }

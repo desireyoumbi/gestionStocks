@@ -161,7 +161,7 @@ class UserController extends Controller
             'phone' => 'required|string|max:15',
             'email' => 'nullable|string|email|max:255',
             'password' => 'nullable|string|min:8|confirmed',
-            'role' => 'required|string|in:administrateur,vice_administrateur,vendeur',
+            'role' => 'required|string|in:vice_administrateur,vendeur',
         ]);
 
         // Gestion conditionnelle du mot de passe
