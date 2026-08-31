@@ -161,9 +161,9 @@
                     </div>
                     <div>
                         <label for="email" class="block text-sm font-medium text-slate-700 mb-1.5">
-                            Email <span class="text-slate-400 font-normal">(facultatif)</span>
+                            Email
                         </label>
-                        <input type="email" name="email" id="email" value="{{ old('email') }}"
+                        <input type="email" name="email" id="email" value="{{ old('email') }}" required
                             placeholder="vous@exemple.com"
                             class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
                     </div>
