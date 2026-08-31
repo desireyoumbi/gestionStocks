@@ -12,6 +12,8 @@ class Boutique extends Model
 
     protected $fillable = [
         'nom',
+        'logo',
+        'primary_color',
     ];
 
     public function users()
