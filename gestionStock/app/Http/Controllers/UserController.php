@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\View;
 
 class UserController extends Controller
 {
