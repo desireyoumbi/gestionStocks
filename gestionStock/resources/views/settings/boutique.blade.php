@@ -70,7 +70,7 @@
         <h2 class="text-amber-500 font-bold mb-2">Transfert de propriété</h2>
         <p class="text-gray-400 text-sm mb-4">Vous pouvez transférer vos droits d'administrateur à un autre membre. Cette action est irréversible.</p>
         
-        <form action="{{ route('boutique.transfer') }}" method="POST" class="space-y-3">
+        <form action="{{ route('boutique.transfer') }}" method="POST" class="space-y-3" onsubmit="return confirm('⚠️ Cette action est IRRÉVERSIBLE.\n\nVous allez perdre vos droits d\'administrateur au profit du membre sélectionné, et deviendrez Vice-Administrateur.\n\nVoulez-vous vraiment continuer ?');">
             @csrf
             <select name="new_admin_id" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-amber-500">
                 @foreach($staff as $member)
@@ -87,7 +87,7 @@
     <!-- Zone Dangereuse -->
     <div class="bg-gray-950 border border-red-900/50 rounded-2xl p-6">
         <h2 class="text-red-500 font-bold mb-2">Zone Dangereuse</h2>
-        <form action="{{ route('boutique.destroy') }}" method="POST" class="space-y-4">
+        <form action="{{ route('boutique.destroy') }}" method="POST" class="space-y-4" onsubmit="return confirm('⚠️ DERNIÈRE VÉRIFICATION\n\nCette action va supprimer DÉFINITIVEMENT votre boutique et tous les comptes associés. Cette action est totalement irréversible.\n\nÊtes-vous absolument certain de vouloir continuer ?');">
             @csrf @method('DELETE')
             
             <p class="text-red-400/70 text-sm">Tapez <span class="font-mono text-red-300">SUPPRIMER_MA_BOUTIQUE</span> pour confirmer et entrez votre mot de passe administrateur.</p>
