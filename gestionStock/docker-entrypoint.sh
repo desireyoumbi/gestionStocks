@@ -10,6 +10,11 @@ fi
 mkdir -p database
 touch database/database.sqlite
 
+# Recrée le lien symbolique public/storage -> storage/app/public à chaque démarrage,
+# car le système de fichiers du conteneur est éphémère sur Render (comme pour la base SQLite).
+# "|| true" évite que le script s'arrête si le lien existe déjà.
+php artisan storage:link || true
+
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
