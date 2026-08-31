@@ -232,6 +232,16 @@ Route::post('/code-connexion-oublie', [CodeConnexionRecoveryController::class, '
 Route::post('/code-connexion-oublie/confirmer/{user}', [CodeConnexionRecoveryController::class, 'confirmAccount'])
     ->name('code-connexion.confirm-account');
 
+
+    Route::get('/debug-logs', function () {
+    $path = storage_path('logs/laravel.log');
+    if (!file_exists($path)) {
+        return "Fichier de log introuvable.";
+    }
+    $lignes = file($path);
+    $dernieresLignes = array_slice($lignes, -150);
+    return '<pre>' . htmlspecialchars(implode('', $dernieresLignes)) . '</pre>';
+});
 // verifier les user de la db
 // routes/web.php — À SUPPRIMER après debug !
 // Route::get('/debug-users', function () {
