@@ -14,6 +14,7 @@ class Boutique extends Model
         'nom',
         'logo',
         'primary_color',
+        'statut',
     ];
 
     public function users()
