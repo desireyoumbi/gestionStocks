@@ -256,6 +256,10 @@ Route::middleware(['platform_admin'])->prefix('platform-admin')->name('platform-
     Route::get('/', [PlatformAdminController::class, 'dashboard'])->name('dashboard');
     Route::post('/boutiques/{boutique}/suspendre', [PlatformAdminController::class, 'suspendre'])->name('suspendre');
     Route::post('/boutiques/{boutique}/reactiver', [PlatformAdminController::class, 'reactiver'])->name('reactiver');
+
+    // NOUVEAU
+    Route::get('/boutiques/{boutique}', [PlatformAdminController::class, 'show'])->name('boutiques.show');
+    Route::post('/users/{user}/reinitialiser-mot-de-passe', [PlatformAdminController::class, 'reinitialiserMotDePasse'])->name('users.reinitialiser-mot-de-passe');
 });    
 
 // Route TEMPORAIRE à ajouter dans routes/web.php — à SUPPRIMER immédiatement après utilisation

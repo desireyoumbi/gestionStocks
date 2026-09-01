@@ -59,7 +59,11 @@
                     <tbody class="divide-y divide-gray-800">
                         @forelse($boutiques as $boutique)
                             <tr class="hover:bg-gray-800/40 transition">
-                                <td class="px-4 py-3 text-sm font-semibold">{{ $boutique->nom }}</td>
+                                <td class="px-4 py-3 text-sm font-semibold">
+                                    <a href="{{ route('platform-admin.boutiques.show', $boutique->id) }}" class="hover:text-amber-500 transition">
+                                        {{ $boutique->nom }}
+                                    </a>
+                                </td>
                                 <td class="px-4 py-3 text-sm text-gray-400">{{ $boutique->users_count }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-400">{{ $boutique->created_at->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3 text-sm">
