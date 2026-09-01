@@ -13,6 +13,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\MovementController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordRecoveryController;
+use App\Http\Controllers\PlatformAdminController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -247,6 +248,28 @@ Route::post('/code-connexion-oublie/confirmer/{user}', [CodeConnexionRecoveryCon
 
 Route::post('/user/{user}/envoyer-identifiants-email', [UserController::class, 'envoyerIdentifiantsEmail'])
     ->name('user.envoyer-identifiants-email');
+
+// ROUTES à ajouter dans routes/web.php
+
+
+Route::middleware(['platform_admin'])->prefix('platform-admin')->name('platform-admin.')->group(function () {
+    Route::get('/', [PlatformAdminController::class, 'dashboard'])->name('dashboard');
+    Route::post('/boutiques/{boutique}/suspendre', [PlatformAdminController::class, 'suspendre'])->name('suspendre');
+    Route::post('/boutiques/{boutique}/reactiver', [PlatformAdminController::class, 'reactiver'])->name('reactiver');
+});    
+
+// Route TEMPORAIRE à ajouter dans routes/web.php — à SUPPRIMER immédiatement après utilisation
+
+Route::get('/debug-creer-platform-admin', function () {
+    $admin = \App\Models\PlatformAdmin::create([
+        'name' => 'Désiré Youmbi',
+        'email' => 'youmbidesire413@gmail.com',
+        'password' => 'ChangeMoiVite123!', // sera haché automatiquement par le cast 'hashed'
+        'code_connexion' => 'ADMIN-0001',
+    ]);
+
+    return "Platform Admin créé avec succès. Code de connexion : {$admin->code_connexion} — pense à changer le mot de passe et à supprimer cette route immédiatement.";
+});
 
 
 // verifier les user de la db

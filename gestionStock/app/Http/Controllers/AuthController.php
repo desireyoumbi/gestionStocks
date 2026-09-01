@@ -61,31 +61,56 @@ class AuthController extends Controller
         return view('Auth.login');
     }
 
-   public function login(Request $request)
-    {
-        $request->validate([
-            'code_connexion' => 'required|string',
-            'password' => 'required|string',
-        ]);
+   // Remplace la méthode login() actuelle dans AuthController.php par celle-ci.
+// Ajoute aussi cet import en haut du fichier : use App\Models\Boutique;
 
-        $credentials = [
-            'code_connexion' => $request->code_connexion,
-            'password' => $request->password,
-        ];
+public function login(Request $request)
+{
+    $request->validate([
+        'code_connexion' => 'required|string',
+        'password' => 'required|string',
+    ]);
 
-        $remember = $request->boolean('remember');
+    $credentials = [
+        'code_connexion' => $request->code_connexion,
+        'password' => $request->password,
+    ];
 
-        if (Auth::attempt($credentials, $remember)) {
-            $request->session()->regenerate();
+    $remember = $request->boolean('remember');
 
-            return redirect()->route('dashboard')
-                             ->with('success', 'Bonjour ' . Auth::user()->name);
+    // 1. On tente d'abord l'authentification en tant que Platform Admin
+    if (Auth::guard('platform_admin')->attempt($credentials, $remember)) {
+        $request->session()->regenerate();
+
+        return redirect()->route('platform-admin.dashboard')
+            ->with('success', 'Bienvenue, ' . Auth::guard('platform_admin')->user()->name);
+    }
+
+    // 2. Sinon, on tente l'authentification classique (administrateur / vice_administrateur / vendeur)
+    if (Auth::attempt($credentials, $remember)) {
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+
+        // Blocage si la boutique de cet utilisateur est suspendue
+        if ($user->boutique && $user->boutique->statut === 'suspendue') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'code_connexion' => 'Ce compte est actuellement suspendu. Contactez le support.',
+            ])->onlyInput('code_connexion');
         }
 
-        return back()->withErrors([
-            'code_connexion' => 'Code de connexion ou mot de passe incorrect',
-        ])->onlyInput('code_connexion');
+        return redirect()->route('dashboard')
+            ->with('success', 'Bonjour ' . $user->name);
     }
+
+    return back()->withErrors([
+        'code_connexion' => 'Code de connexion ou mot de passe incorrect',
+    ])->onlyInput('code_connexion');
+}
 
     public function logout(Request $request)
     {
