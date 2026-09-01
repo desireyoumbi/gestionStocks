@@ -61,7 +61,7 @@ class AuthController extends Controller
         return view('Auth.login');
     }
 
-   // Remplace la méthode login() actuelle dans AuthController.php par celle-ci.
+  // Remplace la méthode login() actuelle dans AuthController.php par celle-ci.
 // Ajoute aussi cet import en haut du fichier : use App\Models\Boutique;
 
 public function login(Request $request)
@@ -99,7 +99,7 @@ public function login(Request $request)
             $request->session()->regenerateToken();
 
             return back()->withErrors([
-                'code_connexion' => 'Ce compte est actuellement suspendu. Contactez le support.',
+                'code_connexion' => 'Ce compte est actuellement suspendu. Contactez le support : 678177749 (WhatsApp) ou youmbidesire413@gmail.com.',
             ])->onlyInput('code_connexion');
         }
 
