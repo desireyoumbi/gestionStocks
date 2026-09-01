@@ -41,13 +41,9 @@ class SupplyController extends Controller
             });
         }
 
-        // 1. On récupère les résultats paginés
         $suppliesPaginator = $query->latest()->paginate(15);
-
-        // 2. On récupère uniquement les éléments de la page actuelle sous forme de collection
         $currentItems = collect($suppliesPaginator->items());
 
-        // Calculs basés uniquement sur la page actuelle (en se basant sur le purchase_price du produit)
         $totalOperations = $currentItems->count();
 
         $totalArticles = $currentItems->sum(function($movement) {
@@ -62,7 +58,6 @@ class SupplyController extends Controller
 
         $totalDepensesFormatted = number_format($totalDepenses, 0, ',', ' ') . ' FCFA';
 
-        // 3. On groupe les éléments de la page actuelle par date
         $groupedSupplies = $currentItems->groupBy(function($supply) {
             return $supply->created_at->format('Y-m-d');
         });
@@ -120,18 +115,15 @@ class SupplyController extends Controller
             'products.*.unit_price.min' => 'Le prix d\'achat unitaire ne peut pas être égal à 0 ou négatif.',
         ]);
 
-        // 1. Calculer le montant total de l'approvisionnement
         $totalAmount = 0;
         foreach ($request->products as $item) {
             $totalAmount += $item['qty'] * $item['unit_price'];
         }
 
-        // 2. Calculer le solde actuel de la caisse pour cette boutique
         $totalIn = CashMovement::where('boutique_id', $boutiqueId)->where('type', 'in')->sum('amount');
         $totalOut = CashMovement::where('boutique_id', $boutiqueId)->where('type', 'out')->sum('amount');
         $currentCashBalance = $totalIn - $totalOut;
 
-        // 3. Vérifier si la caisse est insuffisante ET que l'utilisateur n'a pas forcé l'action
         if ($totalAmount > $currentCashBalance && !$request->has('force_cash')) {
             return back()->withInput()->with([
                 'insufficient_cash' => true,
@@ -143,7 +135,6 @@ class SupplyController extends Controller
         $user = Auth::user();
 
         DB::transaction(function () use ($request, $user, $totalAmount, $boutiqueId) {
-            // Création de la Commande (PurchaseOrder)
             $purchaseOrder = PurchaseOrder::create([
                 'supplier_id' => $request->supplier_id,
                 'boutique_id' => $boutiqueId,
@@ -151,7 +142,6 @@ class SupplyController extends Controller
                 'status' => 'recue',
             ]);
 
-            // Enregistrer le mouvement d'entrée
             $movement = Movement::create([
                 'boutique_id' => $boutiqueId,
                 'type' => 'entree',
@@ -196,9 +186,10 @@ class SupplyController extends Controller
                 ]);
             }
 
-            // Enregistrer la sortie d'argent dans la caisse
+            // Sortie de caisse liée au mouvement via movement_id (lien fiable, plus de parsing texte)
             CashMovement::create([
                 'boutique_id' => $boutiqueId,
+                'movement_id' => $movement->id,
                 'user_id' => Auth::id(),
                 'type' => 'out',
                 'category' => 'restock',
@@ -318,13 +309,15 @@ class SupplyController extends Controller
                 ]);
             }
 
+            // Supprimer l'ancienne sortie de caisse via le lien fiable movement_id,
+            // plus de recherche textuelle fragile sur le motif
             CashMovement::where('boutique_id', $boutiqueId)
-                ->where('category', 'restock')
-                ->where('motif', 'like', "%#{$supply->purchase_order_id}%")
-                ->delete(); 
+                ->where('movement_id', $supply->id)
+                ->delete();
 
             CashMovement::create([
                 'boutique_id' => $boutiqueId,
+                'movement_id' => $supply->id,
                 'user_id' => Auth::id(),
                 'type' => 'out',
                 'category' => 'restock',
@@ -350,7 +343,6 @@ class SupplyController extends Controller
             $totalRefundAmount = 0;
             foreach ($supply->products as $product) {
                 $qty = $product->pivot->qty;
-                // Utilisation de purchase_price de la table product
                 $unitPrice = $product->purchase_price ?? 0;
                 $totalRefundAmount += $qty * $unitPrice;
 
@@ -378,6 +370,12 @@ class SupplyController extends Controller
                     $purchaseOrder->delete();
                 }
             }
+
+            // Supprimer la sortie de caisse originale liée à cet approvisionnement,
+            // via le lien fiable movement_id
+            CashMovement::where('boutique_id', $boutiqueId)
+                ->where('movement_id', $supply->id)
+                ->delete();
 
             if ($totalRefundAmount > 0) {
                 CashMovement::create([
@@ -433,6 +431,4 @@ class SupplyController extends Controller
 
         return $pdf->download('tous_les_approvisionnements_' . now()->format('Y-m-d') . '.pdf');
     }
-
-   
 }

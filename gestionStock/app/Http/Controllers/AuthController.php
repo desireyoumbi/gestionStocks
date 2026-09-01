@@ -56,61 +56,63 @@ class AuthController extends Controller
                              ->with('new_user_code', $codeConnexion);
         });
     }
+
     public function showLogin()
     {
         return view('Auth.login');
     }
 
-  // Remplace la méthode login() actuelle dans AuthController.php par celle-ci.
-// Ajoute aussi cet import en haut du fichier : use App\Models\Boutique;
+    public function login(Request $request)
+    {
+        $request->validate([
+            'code_connexion' => 'required|string',
+            'password' => 'required|string',
+        ]);
 
-public function login(Request $request)
-{
-    $request->validate([
-        'code_connexion' => 'required|string',
-        'password' => 'required|string',
-    ]);
+        // Sécurité : on force le code_connexion en majuscule côté backend,
+        // indépendamment de ce qu'a pu faire (ou non) le JavaScript côté formulaire.
+        $codeConnexion = strtoupper(trim($request->code_connexion));
 
-    $credentials = [
-        'code_connexion' => $request->code_connexion,
-        'password' => $request->password,
-    ];
+        $credentials = [
+            'code_connexion' => $codeConnexion,
+            'password' => $request->password,
+        ];
 
-    $remember = $request->boolean('remember');
+        $remember = $request->boolean('remember');
 
-    // 1. On tente d'abord l'authentification en tant que Platform Admin
-    if (Auth::guard('platform_admin')->attempt($credentials, $remember)) {
-        $request->session()->regenerate();
+        // 1. On tente d'abord l'authentification en tant que Platform Admin
+        if (Auth::guard('platform_admin')->attempt($credentials, $remember)) {
+            $request->session()->regenerate();
 
-        return redirect()->route('platform-admin.dashboard')
-            ->with('success', 'Bienvenue, ' . Auth::guard('platform_admin')->user()->name);
-    }
-
-    // 2. Sinon, on tente l'authentification classique (administrateur / vice_administrateur / vendeur)
-    if (Auth::attempt($credentials, $remember)) {
-        $request->session()->regenerate();
-
-        $user = Auth::user();
-
-        // Blocage si la boutique de cet utilisateur est suspendue
-        if ($user->boutique && $user->boutique->statut === 'suspendue') {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return back()->withErrors([
-                'code_connexion' => 'Ce compte est actuellement suspendu. Contactez le support : 678177749 (WhatsApp) ou youmbidesire413@gmail.com.',
-            ])->onlyInput('code_connexion');
+            return redirect()->route('platform-admin.dashboard')
+                ->with('success', 'Bienvenue, ' . Auth::guard('platform_admin')->user()->name);
         }
 
-        return redirect()->route('dashboard')
-            ->with('success', 'Bonjour ' . $user->name);
-    }
+        // 2. Sinon, on tente l'authentification classique (administrateur / vice_administrateur / vendeur)
+        if (Auth::attempt($credentials, $remember)) {
+            $request->session()->regenerate();
 
-    return back()->withErrors([
-        'code_connexion' => 'Code de connexion ou mot de passe incorrect',
-    ])->onlyInput('code_connexion');
-}
+            $user = Auth::user();
+
+            // Blocage si la boutique de cet utilisateur est suspendue
+            if ($user->boutique && $user->boutique->statut === 'suspendue') {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()->withErrors([
+                    'code_connexion' => 'Ce compte est actuellement suspendu. Contactez le support : 678177749 (WhatsApp) ou youmbidesire413@gmail.com.',
+                ])->onlyInput('code_connexion');
+            }
+
+            return redirect()->route('dashboard')
+                ->with('success', 'Bonjour ' . $user->name);
+        }
+
+        return back()->withErrors([
+            'code_connexion' => 'Code de connexion ou mot de passe incorrect',
+        ])->onlyInput('code_connexion');
+    }
 
     public function logout(Request $request)
     {

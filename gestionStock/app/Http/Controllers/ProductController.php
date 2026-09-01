@@ -163,7 +163,8 @@ class ProductController extends Controller
 
             $initialQuantity = (int) $validated['quantity'];
 
-            $validated['status'] = $initialQuantity > 0 ? 'disponible' : 'rupture'; 
+            // Le statut est TOUJOURS déduit automatiquement de la quantité, jamais choisi manuellement
+            $validated['status'] = $initialQuantity > 0 ? 'disponible' : 'rupture';
             $validated['boutique_id'] = $boutiqueId;
             $validated['user_id'] = Auth::id();
 
@@ -218,6 +219,9 @@ class ProductController extends Controller
 
     /**
      * Met à jour les informations du produit.
+     * Le statut n'est plus un champ modifiable manuellement : il est recalculé
+     * automatiquement à partir de la quantité, pour éviter toute incohérence
+     * (ex: quantité à 0 mais statut resté "disponible").
      */
     public function update(Request $request, Product $product)
     {
@@ -242,7 +246,6 @@ class ProductController extends Controller
             'selling_price' => 'required|numeric|min:0|max:999999999999999999.99',
             'quantity' => 'required|integer|min:0|max:2147483647',
             'alert_threshold' => 'required|integer|min:5|max:2147483647', // Modifiable mais minimum 5
-            'status' => 'required|in:disponible,rupture',
             'category_id' => [
                 'required',
                 Rule::exists('categories', 'id')->where('boutique_id', Auth::user()->boutique_id),
@@ -262,6 +265,11 @@ class ProductController extends Controller
         if (Auth::user()->role === 'vendeur') {
             unset($validated['purchase_price']);
         }
+
+        // Le statut est recalculé automatiquement à partir de la nouvelle quantité,
+        // jamais choisi manuellement — élimine tout risque d'incohérence.
+        $newStockPreview = (int) $validated['quantity'];
+        $validated['status'] = $newStockPreview > 0 ? 'disponible' : 'rupture';
 
         return DB::transaction(function () use ($request, $product, $validated) {
             if ($request->hasFile('image')) {

@@ -12,6 +12,10 @@ class ExpenseController extends Controller
 {
     public function index()
     {
+        if (Auth::user()->role === 'vendeur') {
+            abort(403, "Vous n'êtes pas autorisé à consulter les dépenses.");
+        }
+
         $boutiqueId = Auth::user()->boutique_id;
 
         $expenses = Expense::where('boutique_id', $boutiqueId)
@@ -28,6 +32,10 @@ class ExpenseController extends Controller
 
     public function store(Request $request)
     {
+        if (Auth::user()->role === 'vendeur') {
+            abort(403, "Vous n'êtes pas autorisé à enregistrer une dépense.");
+        }
+
         $request->validate([
             'title' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0|max:999999999999999999.99',
@@ -75,6 +83,10 @@ class ExpenseController extends Controller
 
     public function destroy(Expense $expense)
     {
+        if (Auth::user()->role === 'vendeur') {
+            abort(403, "Vous n'êtes pas autorisé à supprimer une dépense.");
+        }
+
         if ($expense->boutique_id !== Auth::user()->boutique_id) {
             abort(403);
         }

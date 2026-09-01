@@ -150,7 +150,7 @@
                         @endif
                     </div>
                     <input type="text" name="code_connexion" id="code_connexion" value="{{ old('code_connexion') }}" required
-                        placeholder="Ex: K7X9P2"
+                        placeholder="Ex: K7X9P2" oninput="this.value = this.value.toUpperCase()"
                         class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase tracking-widest transition">
                 </div>
 

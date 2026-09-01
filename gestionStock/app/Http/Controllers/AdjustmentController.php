@@ -37,52 +37,61 @@ class AdjustmentController extends Controller
             'motif' => 'required|string|max:255',
         ]);
 
-        DB::transaction(function () use ($request) {
-            $boutiqueId = auth()->user()->boutique_id;
+        try {
+            DB::transaction(function () use ($request) {
+                $boutiqueId = auth()->user()->boutique_id;
 
-            $product = Product::where('id', $request->product_id)
-                              ->where('boutique_id', $boutiqueId)
-                              ->lockForUpdate()
-                              ->firstOrFail();
+                $product = Product::where('id', $request->product_id)
+                                  ->where('boutique_id', $boutiqueId)
+                                  ->lockForUpdate()
+                                  ->firstOrFail();
 
-            $oldStock = $product->quantity;
-            $adjustmentQty = (int) $request->quantity; // Peut être +5 ou -2
-            $newStock = $oldStock + $adjustmentQty;
+                $oldStock = $product->quantity;
+                $adjustmentQty = (int) $request->quantity; // Peut être +5 ou -2
+                $newStock = $oldStock + $adjustmentQty;
 
-            // Sécurité pour éviter un stock négatif lors d'un ajustement négatif
-            if ($newStock < 0) {
-                throw new \Exception("L'ajustement entraînerait un stock négatif ({$newStock}) pour ce produit.");
-            }
+                // Sécurité pour éviter un stock négatif lors d'un ajustement négatif
+                if ($newStock < 0) {
+                    throw new \Exception("L'ajustement entraînerait un stock négatif ({$newStock}) pour ce produit.");
+                }
 
-            // 1. Enregistrement dans la table des mouvements (type 'ajustement')
-            $movement = Movement::create([
-                'boutique_id' => $boutiqueId,
-                'type' => 'ajustement',
-                'date' => now(),
-                'user_id' => Auth::id(),
-                'motif' => $request->motif,
-            ]);
+                // 1. Enregistrement dans la table des mouvements (type 'ajustement')
+                $movement = Movement::create([
+                    'boutique_id' => $boutiqueId,
+                    'type' => 'ajustement',
+                    'date' => now(),
+                    'user_id' => Auth::id(),
+                    'motif' => $request->motif,
+                ]);
 
-            // 2. Association dans la table pivot avec la quantité (+ ou -)
-            $movement->products()->attach($product->id, [
-                'qty' => $adjustmentQty
-            ]);
+                // 2. Association dans la table pivot avec la quantité (+ ou -)
+                $movement->products()->attach($product->id, [
+                    'qty' => $adjustmentQty
+                ]);
 
-            // 3. Mise à jour effective du stock du produit
-            $product->update(['quantity' => $newStock]);
+                // 3. Mise à jour effective du stock ET du statut, pour rester cohérent
+                // avec le reste de l'application (le statut est toujours déduit du stock,
+                // jamais laissé indépendant).
+                $product->update([
+                    'quantity' => $newStock,
+                    'status' => $newStock > 0 ? 'disponible' : 'rupture',
+                ]);
 
-            // 4. --- ENREGISTREMENT DANS L'HISTORIQUE GLOBAL (StockMovement) ---
-            StockMovement::create([
-                'boutique_id' => $boutiqueId,
-                'product_id'  => $product->id,
-                'user_id'     => Auth::id(),
-                'type'        => $adjustmentQty >= 0 ? 'entry' : 'adjustment',
-                'quantity'    => abs($adjustmentQty),
-                'old_stock'   => $oldStock,
-                'new_stock'   => $newStock,
-                'reason'      => $request->motif,
-            ]);
-        });
+                // 4. --- ENREGISTREMENT DANS L'HISTORIQUE GLOBAL (StockMovement) ---
+                StockMovement::create([
+                    'boutique_id' => $boutiqueId,
+                    'product_id'  => $product->id,
+                    'user_id'     => Auth::id(),
+                    'type'        => $adjustmentQty >= 0 ? 'entry' : 'adjustment',
+                    'quantity'    => abs($adjustmentQty),
+                    'old_stock'   => $oldStock,
+                    'new_stock'   => $newStock,
+                    'reason'      => $request->motif,
+                ]);
+            });
+        } catch (\Exception $e) {
+            return back()->withInput()->withErrors(['quantity' => $e->getMessage()]);
+        }
 
         return redirect()->route('adjustments.index')->with('success', 'Ajustement de stock enregistré avec succès.');
     }

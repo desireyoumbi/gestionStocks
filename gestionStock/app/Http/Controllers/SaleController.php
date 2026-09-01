@@ -169,9 +169,11 @@ class SaleController extends Controller
                     ]);
                 }
 
-                // 3. Enregistrer l'entrée dans la caisse de manière sécurisée
+                // 3. Enregistrer l'entrée dans la caisse, liée au mouvement via movement_id
+                // (et non plus via une recherche textuelle fragile dans le motif)
                 CashMovement::create([
                     'boutique_id' => $boutiqueId,
+                    'movement_id' => $movement->id,
                     'user_id' => $user->id,
                     'type' => 'in',
                     'category' => 'sale',
@@ -229,11 +231,9 @@ class SaleController extends Controller
                 }
             }
 
-            // Supprimer l'encaissement correspondant dans la caisse
+            // Supprimer l'encaissement correspondant dans la caisse, via le lien fiable movement_id
             CashMovement::where('boutique_id', $boutiqueId)
-                ->where('category', 'sale')
-                ->where('type', 'in')
-                ->where('motif', 'like', '%vente #' . $sale->id . '%')
+                ->where('movement_id', $sale->id)
                 ->delete();
 
             // Supprimer le mouvement de vente global

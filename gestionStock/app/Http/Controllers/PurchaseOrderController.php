@@ -6,6 +6,8 @@ use App\Models\Movement;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Models\StockMovement;
+use App\Models\CashMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -111,7 +113,9 @@ class PurchaseOrderController extends Controller
     }
 
     /**
-     * Valide une commande fournisseur : génère le mouvement d'entrée et met à jour les stocks.
+     * Valide une commande fournisseur : génère le mouvement d'entrée, met à jour les stocks
+     * (quantité + statut), trace l'opération dans l'historique, synchronise le prix d'achat,
+     * et enregistre la sortie de caisse correspondante.
      */
     public function receive(PurchaseOrder $purchaseOrder)
     {
@@ -137,28 +141,71 @@ class PurchaseOrderController extends Controller
             // Étape A : Créer le mouvement de stock d'entrée avec l'ID de la commande
             $movement = Movement::create([
                 'boutique_id'       => $lockedOrder->boutique_id,
-                'purchase_order_id' => $lockedOrder->id, // <- Ajouté ici pour lier le fournisseur et la commande
+                'purchase_order_id' => $lockedOrder->id,
                 'type'              => 'entree',
                 'date'              => now(),
                 'motif'             => 'Validation commande fournisseur #' . $lockedOrder->id,
                 'user_id'           => Auth::id(),
             ]);
 
+            $totalAmount = 0;
+
             // Étape B : Parcourir les produits de la commande pour alimenter le mouvement et le stock
             foreach ($lockedOrder->products as $product) {
+                $qty = $product->pivot->qty;
+                $unitPrice = $product->pivot->unit_price ?? 0;
+
                 // Associer le produit au mouvement dans la table pivot des mouvements
                 $movement->products()->attach($product->id, [
-                    'qty' => $product->pivot->qty,
+                    'qty' => $qty,
                 ]);
 
                 // Étape C : Mettre à jour le stock réel du produit avec verrouillage pour la concurrence
                 $productToUpdate = Product::where('id', $product->id)->lockForUpdate()->first();
+
                 if ($productToUpdate) {
-                    $productToUpdate->increment('quantity', $product->pivot->qty);
+                    $oldStock = $productToUpdate->quantity;
+                    $newStock = $oldStock + $qty;
+
+                    // Quantité, statut recalculé, et prix d'achat synchronisé avec ce qui a été payé
+                    $productToUpdate->update([
+                        'quantity' => $newStock,
+                        'status' => $newStock > 0 ? 'disponible' : 'rupture',
+                        'purchase_price' => $unitPrice,
+                    ]);
+
+                    // Traçabilité dans l'historique global des stocks, comme pour tout autre type d'entrée
+                    StockMovement::create([
+                        'boutique_id' => $lockedOrder->boutique_id,
+                        'product_id'  => $productToUpdate->id,
+                        'user_id'     => Auth::id(),
+                        'type'        => 'entry',
+                        'quantity'    => $qty,
+                        'old_stock'   => $oldStock,
+                        'new_stock'   => $newStock,
+                        'reason'      => 'Réception commande fournisseur #' . $lockedOrder->id,
+                    ]);
+
+                    $totalAmount += $qty * $unitPrice;
                 }
             }
 
-            // Étape D : Mettre à jour le statut de la commande
+            // Étape D : Enregistrer la sortie de caisse correspondant à cet achat,
+            // liée au mouvement via movement_id pour rester cohérent avec SupplyController.
+            if ($totalAmount > 0) {
+                CashMovement::create([
+                    'boutique_id' => $lockedOrder->boutique_id,
+                    'movement_id' => $movement->id,
+                    'user_id'     => Auth::id(),
+                    'type'        => 'out',
+                    'category'    => 'restock',
+                    'amount'      => $totalAmount,
+                    'motif'       => 'Réception commande fournisseur #' . $lockedOrder->id,
+                    'is_unjustified' => false,
+                ]);
+            }
+
+            // Étape E : Mettre à jour le statut de la commande
             $lockedOrder->update([
                 'status'     => 'recue',
                 'updated_by' => Auth::id(),

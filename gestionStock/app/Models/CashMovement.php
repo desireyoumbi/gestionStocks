@@ -17,6 +17,7 @@ class CashMovement extends Model
         'category',
         'motif',
         'is_unjustified',
+        'movement_id',
     ];
 
     // Relation avec la boutique
