@@ -83,6 +83,18 @@ class DashboardController extends Controller
         $netProfitWeek = $grossProfitWeek - $expensesWeek;
         $netProfitMonth = $grossProfitMonth - $expensesMonth;
 
+        // --- STATISTIQUES SUPPLÉMENTAIRES POUR LES CARTES (Panier moyen, articles vendus, produit phare) ---
+        $totalArticlesVendus = 0;
+        foreach ($salesMonthCollection as $movement) {
+            foreach ($movement->products as $product) {
+                $totalArticlesVendus += abs($product->pivot->qty ?? 0);
+            }
+        }
+
+        $totalVentesMois = $salesMonthCollection->count();
+        $panierMoyenVal = $totalVentesMois > 0 ? ($caMonth / $totalVentesMois) : 0;
+        $panierMoyen = number_format($panierMoyenVal, 0, ',', ' ') . ' FCFA';
+
         // --- DÉTAIL DES VENTES PAR PRODUIT (pour le mois en cours) ---
         $productSalesStats = [];
         foreach ($salesMonthCollection as $movement) {
@@ -105,7 +117,7 @@ class DashboardController extends Controller
             }
         }
 
-        // Produit le plus vendu de la semaine
+        // Produit le plus vendu de la semaine / mois
         $topProductWeek = $salesWeekCollection->flatMap->products
             ->groupBy('id')
             ->map(fn($group) => $group->sum(fn($p) => abs($p->pivot->qty)))
@@ -113,7 +125,8 @@ class DashboardController extends Controller
             ->keys()
             ->first();
 
-        $bestProduct = $topProductWeek ? Product::find($topProductWeek) : null;
+        $bestProductObj = $topProductWeek ? Product::find($topProductWeek) : null;
+        $produitPhare = $bestProductObj ? $bestProductObj->name : 'Aucun';
 
         // --- RÉCUPÉRATION DE LA DERNIÈRE ACTIVITÉ (Sécurisé par boutique) ---
         $latestActivity = Movement::where('boutique_id', $boutiqueId)
@@ -134,9 +147,11 @@ class DashboardController extends Controller
             'expensesMonth',
             'netProfitWeek',
             'netProfitMonth',
-            'bestProduct',
+            'produitPhare',
+            'totalArticlesVendus',
+            'panierMoyen',
             'productSalesStats',
-            'latestActivity' // <- Ajouté ici pour la vue
+            'latestActivity'
         ));
     }
 
@@ -146,29 +161,22 @@ class DashboardController extends Controller
         $boutiqueId = $user->boutique_id;
         $boutique = $user->boutique;
 
-        // 1. Fonds initial de la boutique
         $initialFund = \App\Models\CashMovement::where('boutique_id', $boutiqueId)
             ->where(function ($q) {
                 $q->where('type', 'opening')->orWhere('category', 'initial');
             })
             ->sum('amount');
 
-        // 2. Solde réel actuel en caisse
         $currentCashBalance = $boutique ? $boutique->getCashBalance() : 0;
 
-        // 3. Total des dépenses de l'année en cours
         $totalYearExpenses = \App\Models\Expense::where('boutique_id', $boutiqueId)
             ->whereYear('expense_date', date('Y'))
             ->sum('amount');
 
-        // 4. Valeur totale du stock actuel (Quantité * Prix d'achat)
         $stockValue = \App\Models\Product::where('boutique_id', $boutiqueId)
             ->select(DB::raw('SUM(quantity * purchase_price) as total_value'))
             ->value('total_value') ?? 0;
 
-        // 5. Statistiques de vente par mois
-        // MONTH()/YEAR() sont des fonctions MySQL, absentes de SQLite.
-        // On adapte l'expression SQL selon le driver actif pour que ça marche sur les deux.
         $driver = DB::connection()->getDriverName();
 
         if ($driver === 'sqlite') {

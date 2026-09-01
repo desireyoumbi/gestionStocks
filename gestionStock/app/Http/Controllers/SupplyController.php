@@ -186,7 +186,6 @@ class SupplyController extends Controller
                 ]);
             }
 
-            // Sortie de caisse liée au mouvement via movement_id (lien fiable, plus de parsing texte)
             CashMovement::create([
                 'boutique_id' => $boutiqueId,
                 'movement_id' => $movement->id,
@@ -309,8 +308,6 @@ class SupplyController extends Controller
                 ]);
             }
 
-            // Supprimer l'ancienne sortie de caisse via le lien fiable movement_id,
-            // plus de recherche textuelle fragile sur le motif
             CashMovement::where('boutique_id', $boutiqueId)
                 ->where('movement_id', $supply->id)
                 ->delete();
@@ -332,7 +329,7 @@ class SupplyController extends Controller
     }
 
     /**
-     * Annule un approvisionnement.
+     * Annule un approvisionnement (Rétro-pédalage stock et caisse).
      */
     public function destroy($id)
     {
@@ -340,20 +337,25 @@ class SupplyController extends Controller
             $boutiqueId = Auth::user()->boutique_id;
             $supply = Movement::where('type', 'entree')->where('boutique_id', $boutiqueId)->findOrFail($id);
             
-            $totalRefundAmount = 0;
+            // Récupérer le montant exact initial depuis la table des mouvements de caisse
+            $cashOutMovement = CashMovement::where('boutique_id', $boutiqueId)
+                ->where('movement_id', $supply->id)
+                ->first();
+            
+            $totalRefundAmount = $cashOutMovement ? $cashOutMovement->amount : 0;
+
             foreach ($supply->products as $product) {
                 $qty = $product->pivot->qty;
-                $unitPrice = $product->purchase_price ?? 0;
-                $totalRefundAmount += $qty * $unitPrice;
 
-                $oldStock = $product->quantity;
+                $productModel = Product::lockForUpdate()->find($product->id);
+                $oldStock = $productModel->quantity;
                 $newStock = max(0, $oldStock - $qty);
 
-                $product->update(['quantity' => $newStock]);
+                $productModel->update(['quantity' => $newStock]);
 
                 StockMovement::create([
                     'boutique_id' => $boutiqueId,
-                    'product_id'  => $product->id,
+                    'product_id'  => $productModel->id,
                     'user_id'     => Auth::id(),
                     'type'        => 'adjustment',
                     'quantity'    => $qty,
@@ -371,15 +373,16 @@ class SupplyController extends Controller
                 }
             }
 
-            // Supprimer la sortie de caisse originale liée à cet approvisionnement,
-            // via le lien fiable movement_id
-            CashMovement::where('boutique_id', $boutiqueId)
-                ->where('movement_id', $supply->id)
-                ->delete();
+            // Supprimer la sortie de caisse d'origine
+            if ($cashOutMovement) {
+                $cashOutMovement->delete();
+            }
 
+            // Réinjecter l'argent exact en caisse (Entrée de remboursement)
             if ($totalRefundAmount > 0) {
                 CashMovement::create([
                     'boutique_id' => $boutiqueId,
+                    'movement_id' => $supply->id,
                     'user_id'     => Auth::id(),
                     'type'        => 'in',
                     'category'    => 'refund',
@@ -393,7 +396,7 @@ class SupplyController extends Controller
             $supply->delete();
         });
 
-        return back()->with('success', 'Approvisionnement annulé et stock corrigé avec succès.');
+        return back()->with('success', 'Approvisionnement annulé, stock déduit et caisse rééquilibrée avec succès.');
     }
 
     public function exportDayPdf(Request $request)

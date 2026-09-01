@@ -126,7 +126,7 @@
                                 <th class="p-4">Prix Unit.</th>
                                 <th class="p-4">Total Ligne</th>
                                 <th class="p-4">Motif</th>
-                                <th class="p-4 text-right">Statut</th>
+                                <th class="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-900 text-gray-700 dark:text-gray-300">
@@ -150,9 +150,14 @@
                                         <td class="p-4 font-bold text-gray-900 dark:text-white sale-total">{{ number_format($lineTotal, 0, ',', ' ') }} FCFA</td>
                                         <td class="p-4 text-gray-500 sale-motif">{{ $sale->motif ?? '-' }}</td>
                                         <td class="p-4 text-right">
-                                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
-                                                Validé
-                                            </span>
+                                            <!-- Bouton d'annulation de vente sécurisé -->
+                                            <form action="{{ route('sales.destroy', $sale->id) }}" method="POST" onsubmit="return confirm('Voulez-vous vraiment annuler cette vente ? Le stock sera restitué et la caisse mise à jour.');" class="inline-block">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-xs px-3 py-1.5 rounded-xl border border-rose-200 dark:bg-gray-900 dark:border-gray-800 transition shadow-sm">
+                                                    Annuler
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                 @endforeach

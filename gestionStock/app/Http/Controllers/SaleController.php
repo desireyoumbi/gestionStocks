@@ -170,7 +170,6 @@ class SaleController extends Controller
                 }
 
                 // 3. Enregistrer l'entrée dans la caisse, liée au mouvement via movement_id
-                // (et non plus via une recherche textuelle fragile dans le motif)
                 CashMovement::create([
                     'boutique_id' => $boutiqueId,
                     'movement_id' => $movement->id,
@@ -191,7 +190,7 @@ class SaleController extends Controller
     }
 
     /**
-     * Annule une vente (supprime le mouvement, restitue le stock et supprime l'entrée de caisse associée).
+     * Annule une vente (restitue le stock, supprime l'entrée de caisse et supprime le mouvement).
      */
     public function destroy($id)
     {
@@ -202,9 +201,12 @@ class SaleController extends Controller
                 ->where('type', 'sortie')
                 ->findOrFail($id);
             
-            // Parcourir les produits associés pour restituer le stock avec verrouillage
+            // Parcourir les produits associés pour restituer le stock avec verrouillage et isolation boutique
             foreach ($sale->products as $product) {
-                $productToUpdate = Product::where('id', $product->id)->lockForUpdate()->first();
+                $productToUpdate = Product::where('id', $product->id)
+                    ->where('boutique_id', $boutiqueId)
+                    ->lockForUpdate()
+                    ->first();
                 
                 if ($productToUpdate) {
                     $pivotQty = $product->pivot->qty ?? ($product->pivot->quantity ?? 1);
@@ -231,7 +233,7 @@ class SaleController extends Controller
                 }
             }
 
-            // Supprimer l'encaissement correspondant dans la caisse, via le lien fiable movement_id
+            // Supprimer l'encaissement correspondant dans la caisse
             CashMovement::where('boutique_id', $boutiqueId)
                 ->where('movement_id', $sale->id)
                 ->delete();

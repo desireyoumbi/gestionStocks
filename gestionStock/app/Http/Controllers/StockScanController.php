@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Movement;
+use App\Models\StockMovement;
+use App\Models\CashMovement;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class StockScanController extends Controller
 {
@@ -20,7 +24,11 @@ class StockScanController extends Controller
             'action_type' => 'required|in:edit,sell,supply'
         ]);
 
-        $product = Product::where('reference', $request->reference)->first();
+        $boutiqueId = Auth::user()->boutique_id;
+        
+        $product = Product::where('boutique_id', $boutiqueId)
+            ->where('reference', $request->reference)
+            ->first();
 
         if (!$product) {
             return redirect()->route('stock.scan.index')
@@ -46,54 +54,126 @@ class StockScanController extends Controller
             'quantity' => 'required|integer|min:1'
         ]);
 
-        $product = Product::findOrFail($request->product_id);
+        $boutiqueId = Auth::user()->boutique_id;
         $quantity = (int) $request->quantity;
+        $userId = Auth::id();
 
-        if ($request->action_type === 'sell') {
-            if ($product->quantity < $quantity) {
-                return redirect()->route('stock.scan.index')
-                                 ->with('error', 'Stock insuffisant ! Stock actuel : ' . $product->quantity);
-            }
+        try {
+            $message = '';
 
-            // 1. Diminuer le stock du produit
-            $product->decrement('quantity', $quantity);
+            DB::transaction(function () use ($request, $boutiqueId, $quantity, $userId, &$message) {
+                // Verrouillage anti-concurrence pour éviter les conflits de stock simultanés
+                $product = Product::where('boutique_id', $boutiqueId)
+                    ->where('id', $request->product_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            // 2. Créer le mouvement de type 'sortie' (correspondant à une vente)
-            $movement = Movement::create([
-                'boutique_id' => $product->boutique_id ?? auth()->user()->boutique_id,
-                'type'        => 'sortie', 
-                'date'        => Carbon::now(),
-                'motif'       => 'Vente rapide par scan',
-                'user_id'     => auth()->id(),
-            ]);
+                if ($request->action_type === 'sell') {
+                    if ($product->quantity < $quantity) {
+                        throw new \Exception('Stock insuffisant ! Stock actuel : ' . $product->quantity);
+                    }
 
-            // 3. Attacher le produit au mouvement via la table pivot
-            $movement->products()->attach($product->id, ['qty' => $quantity]);
+                    $oldStock = $product->quantity;
+                    $newStock = $oldStock - $quantity;
+                    $totalSaleAmount = $quantity * $product->selling_price;
 
-            return redirect()->route('stock.scan.index')
-                             ->with('success', 'Vente enregistrée avec succès : ' . $quantity . 'x ' . $product->name);
-        } 
-        
-        if ($request->action_type === 'supply') {
-            // 1. Augmenter le stock
-            $product->increment('quantity', $quantity);
+                    // 1. Mettre à jour le stock et le statut
+                    $product->update([
+                        'quantity' => $newStock,
+                        'status' => $newStock > 0 ? 'disponible' : 'rupture'
+                    ]);
 
-            // 2. Créer le mouvement de type 'entree' (correspondant à un approvisionnement)
-            $movement = Movement::create([
-                'boutique_id' => $product->boutique_id ?? auth()->user()->boutique_id,
-                'type'        => 'entree', 
-                'date'        => Carbon::now(),
-                'motif'       => 'Approvisionnement rapide par scan',
-                'user_id'     => auth()->id(),
-            ]);
+                    // 2. Créer le mouvement de type 'sortie' (vente)
+                    $movement = Movement::create([
+                        'boutique_id' => $boutiqueId,
+                        'type'        => 'sortie', 
+                        'date'        => Carbon::now(),
+                        'motif'       => 'Vente rapide par scan',
+                        'user_id'     => $userId,
+                    ]);
 
-            // 3. Attacher le produit au mouvement via la table pivot
-            $movement->products()->attach($product->id, ['qty' => $quantity]);
+                    $movement->products()->attach($product->id, ['qty' => $quantity]);
 
-            return redirect()->route('stock.scan.index')
-                             ->with('success', 'Approvisionnement réussi : +' . $quantity . ' ' . $product->name);
+                    // 3. Traçabilité globale des stocks
+                    StockMovement::create([
+                        'boutique_id' => $boutiqueId,
+                        'product_id'  => $product->id,
+                        'user_id'     => $userId,
+                        'type'        => 'sale',
+                        'quantity'    => $quantity,
+                        'old_stock'   => $oldStock,
+                        'new_stock'   => $newStock,
+                        'reason'      => 'Vente rapide par scan',
+                    ]);
+
+                    // 4. Mouvement de caisse (Encaissement)
+                    CashMovement::create([
+                        'boutique_id'    => $boutiqueId,
+                        'movement_id'    => $movement->id,
+                        'user_id'        => $userId,
+                        'type'           => 'in',
+                        'category'       => 'sale',
+                        'amount'         => $totalSaleAmount,
+                        'motif'          => 'Encaissement vente rapide par scan #' . $movement->id,
+                        'is_unjustified' => false,
+                    ]);
+
+                    $message = 'Vente et encaissement enregistrés avec succès : ' . $quantity . 'x ' . $product->name;
+
+                } elseif ($request->action_type === 'supply') {
+                    $oldStock = $product->quantity;
+                    $newStock = $oldStock + $quantity;
+                    $totalCost = $quantity * $product->purchase_price;
+
+                    // 1. Mettre à jour le stock et le statut
+                    $product->update([
+                        'quantity' => $newStock,
+                        'status' => 'disponible'
+                    ]);
+
+                    // 2. Créer le mouvement de type 'entree' (approvisionnement)
+                    $movement = Movement::create([
+                        'boutique_id' => $boutiqueId,
+                        'type'        => 'entree', 
+                        'date'        => Carbon::now(),
+                        'motif'       => 'Approvisionnement rapide par scan',
+                        'user_id'     => $userId,
+                    ]);
+
+                    $movement->products()->attach($product->id, ['qty' => $quantity]);
+
+                    // 3. Traçabilité globale des stocks
+                    StockMovement::create([
+                        'boutique_id' => $boutiqueId,
+                        'product_id'  => $product->id,
+                        'user_id'     => $userId,
+                        'type'        => 'entry',
+                        'quantity'    => $quantity,
+                        'old_stock'   => $oldStock,
+                        'new_stock'   => $newStock,
+                        'reason'      => 'Approvisionnement rapide par scan',
+                    ]);
+
+                    // 4. Mouvement de caisse (Sortie d'argent pour l'achat)
+                    CashMovement::create([
+                        'boutique_id'    => $boutiqueId,
+                        'movement_id'    => $movement->id,
+                        'user_id'        => $userId,
+                        'type'           => 'out',
+                        'category'       => 'restock',
+                        'amount'         => $totalCost,
+                        'motif'          => 'Approvisionnement rapide par scan pour : ' . $product->name,
+                        'is_unjustified' => false,
+                    ]);
+
+                    $message = 'Approvisionnement réussi et caisse mise à jour : +' . $quantity . ' ' . $product->name;
+                }
+            });
+
+            return redirect()->route('stock.scan.index')->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->route('stock.scan.index')->with('error', $e->getMessage());
         }
-
-        return redirect()->route('stock.scan.index')->with('error', 'Action non reconnue.');
     }
 }

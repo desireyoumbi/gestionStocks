@@ -115,12 +115,12 @@
                                 <th class="py-3 px-6">Produits</th>
                                 <th class="py-3 px-6">Total Qté</th>
                                 <th class="py-3 px-6">Motif</th>
-                                <th class="py-3 px-6 text-right">Statut</th>
+                                <th class="py-3 px-6 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100 text-sm">
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-900 text-sm">
                             @foreach($suppliesOfDay as $supply)
-                                <tr class="hover:bg-gray-50/50 transition">
+                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition">
                                     <td class="py-3 px-6 text-gray-500">{{ $supply->created_at->format('H:i') }}</td>
                                     <td class="py-3 px-6 text-xs font-bold">
                                         @if($supply->purchaseOrder && $supply->purchaseOrder->supplier)
@@ -132,16 +132,32 @@
                                     <td class="py-3 px-6">
                                         <div class="flex flex-col gap-1">
                                             @foreach($supply->products as $product)
-                                                <div class="font-bold text-gray-900">{{ $product->name }} <span class="text-[10px] text-gray-400 font-normal">({{ $product->pivot->qty }} unités)</span></div>
+                                                <div class="font-bold text-gray-900 dark:text-white">{{ $product->name }} <span class="text-[10px] text-gray-400 font-normal">({{ $product->pivot->qty }} unités)</span></div>
                                             @endforeach
                                         </div>
                                     </td>
                                     <td class="py-3 px-6 font-bold text-emerald-500">+{{ $supply->products->sum('pivot.qty') }}</td>
                                     <td class="py-3 px-6 text-gray-500">{{ $supply->motif ?? '-' }}</td>
                                     <td class="py-3 px-6 text-right">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
-                                            Validé
-                                        </span>
+                                        <div class="flex items-center justify-end gap-2">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                                Validé
+                                            </span>
+
+                                            <!-- Bouton Modifier -->
+                                            <a href="{{ route('supplies.edit', $supply->id) }}" class="p-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white rounded-lg transition" title="Modifier">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            </a>
+
+                                            <!-- Formulaire d'Annulation -->
+                                            <form action="{{ route('supplies.destroy', $supply->id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cet approvisionnement ? Cela va déduire le stock et rééquilibrer la caisse.');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="p-1.5 bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white rounded-lg transition" title="Annuler l'approvisionnement">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -150,7 +166,7 @@
                 </div>
             </div>
         @empty
-            <div class="bg-white border border-gray-100 rounded-2xl p-12 text-center text-gray-400">Aucun approvisionnement trouvé.</div>
+            <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center text-gray-400">Aucun approvisionnement trouvé.</div>
         @endforelse
     </div>
 

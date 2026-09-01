@@ -45,14 +45,11 @@
                     @error('category_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
-                {{-- Statut --}}
+                {{-- Quantité --}}
                 <div>
-                    <label for="status" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Statut *</label>
-                    <select name="status" id="status" required class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
-                        <option value="disponible" {{ old('status', $product->status) == 'disponible' ? 'selected' : '' }}>Disponible</option>
-                        <option value="rupture" {{ old('status', $product->status) == 'rupture' ? 'selected' : '' }}>Rupture</option>
-                    </select>
-                    @error('status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    <label for="quantity" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Quantité en stock *</label>
+                    <input type="number" name="quantity" id="quantity" value="{{ old('quantity', $product->quantity) }}" required class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
+                    @error('quantity') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
             </div>
 
@@ -72,14 +69,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {{-- Quantité --}}
-                <div>
-                    <label for="quantity" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Quantité en stock *</label>
-                    <input type="number" name="quantity" id="quantity" value="{{ old('quantity', $product->quantity) }}" required class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
-                    @error('quantity') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
-
+            <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
                 {{-- Seuil d'alerte --}}
                 <div>
                     <label for="alert_threshold" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Seuil d'alerte stock bas *</label>
