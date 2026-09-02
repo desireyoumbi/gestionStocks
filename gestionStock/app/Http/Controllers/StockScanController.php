@@ -99,7 +99,11 @@ class StockScanController extends Controller
                         'user_id'     => $userId,
                     ]);
 
-                    $movement->products()->attach($product->id, ['qty' => $quantity]);
+                    // MODIFICATION APPORTÉE ICI : Enregistrement du prix unitaire et de la quantité dans la table pivot
+                    $movement->products()->attach($product->id, [
+                        'qty' => $quantity,
+                        'unit_price' => $negotiatedPrice
+                    ]);
 
                     StockMovement::create([
                         'boutique_id' => $boutiqueId,
