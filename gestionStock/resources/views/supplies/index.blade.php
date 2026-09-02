@@ -159,10 +159,6 @@
                                                     Actif
                                                 </span>
 
-                                                <!-- Bouton de modification -->
-                                                <a href="{{ route('supplies.edit', $supply->id) }}" class="p-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white rounded-lg transition" title="Modifier l'approvisionnement">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                                </a>
 
                                                 <!-- Formulaire d'Annulation -->
                                                 <form action="{{ route('supplies.destroy', $supply->id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cet approvisionnement ? Cela va déduire le stock et rééquilibrer la caisse.');">
