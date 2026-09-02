@@ -21,7 +21,6 @@ class SaleController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id;
 
-        // 1. La requête principale (pour la liste paginée)
         $query = Movement::with(['products', 'user'])
             ->where('boutique_id', $boutiqueId)
             ->where('type', 'sortie');
@@ -36,16 +35,12 @@ class SaleController extends Controller
             });
         }
 
-        // On pagine les résultats
         $sales = $query->latest()->paginate(15);
 
-        // 2. GROUPEMENT PAR DATE (pour l'affichage)
         $groupedSales = collect($sales->items())->groupBy(function($sale) {
             return $sale->created_at->format('Y-m-d');
         });
 
-        // 3. CALCULS POUR LES CARTES STATISTIQUES
-        // On exclut systématiquement les ventes annulées (annule_at non nul) de tous les totaux.
         $baseVentesQuery = Movement::where('boutique_id', $boutiqueId)
             ->where('type', 'sortie')
             ->whereNull('annule_at');
@@ -59,7 +54,6 @@ class SaleController extends Controller
             ->whereNull('movements.annule_at')
             ->sum(DB::raw('ABS(qty)')) ?? 0;
 
-        // Correction du calcul du CA en allant chercher le prix unitaire fixé dans la table pivot (movement_products)
         $chiffreAffairesTotal = DB::table('movement_products')
             ->join('movements', 'movement_products.movement_id', '=', 'movements.id')
             ->where('movements.boutique_id', $boutiqueId)
@@ -104,6 +98,9 @@ class SaleController extends Controller
 
     /**
      * Enregistre la vente, met à jour le stock, crédite la caisse et redirige vers l'index.
+     * Le prix de vente est saisi par l'utilisateur pour chaque produit (négociation possible),
+     * mais ne peut jamais descendre en dessous du prix d'achat du produit concerné,
+     * pour empêcher une vente à perte non intentionnelle.
      */
     public function store(Request $request)
     {
@@ -117,9 +114,41 @@ class SaleController extends Controller
                 Rule::exists('products', 'id')->where('boutique_id', $boutiqueId),
             ],
             'items.*.quantity' => 'required|integer|min:1|max:2147483647',
+            'items.*.unit_price' => [
+                'required',
+                'numeric',
+                'min:0',
+                'max:999999999999999999.99',
+                // Règle personnalisée : le prix de vente saisi ne peut jamais être inférieur
+                // au prix d'achat du produit correspondant à cette même ligne.
+                function ($attribute, $value, $fail) use ($request, $boutiqueId) {
+                    // $attribute vaut par exemple "items.0.unit_price" : on récupère l'index de la ligne
+                    preg_match('/items\.(\d+)\.unit_price/', $attribute, $matches);
+                    $index = $matches[1] ?? null;
+
+                    if ($index === null) {
+                        return;
+                    }
+
+                    $productId = $request->input("items.$index.product_id");
+                    if (!$productId) {
+                        return;
+                    }
+
+                    $product = Product::where('id', $productId)
+                        ->where('boutique_id', $boutiqueId)
+                        ->first();
+
+                    if ($product && $value < $product->purchase_price) {
+                        $fail("Le prix de vente de « {$product->name} » ne peut pas être inférieur au prix d'achat (" . number_format($product->purchase_price, 0, ',', ' ') . " FCFA).");
+                    }
+                },
+            ],
         ], [
             'items.*.product_id.exists' => 'Un ou plusieurs produits sélectionnés sont invalides.',
             'items.*.quantity.max' => 'La quantité demandée est trop élevée.',
+            'items.*.unit_price.required' => 'Le prix de vente est obligatoire pour chaque produit.',
+            'items.*.unit_price.min' => 'Le prix de vente ne peut pas être négatif.',
         ]);
 
         try {
@@ -127,7 +156,6 @@ class SaleController extends Controller
                 $user = Auth::user();
                 $totalSaleAmount = 0;
 
-                // 1. Créer le mouvement global de vente
                 $movement = Movement::create([
                     'boutique_id' => $boutiqueId,
                     'type' => 'sortie',
@@ -136,7 +164,6 @@ class SaleController extends Controller
                     'motif' => $request->motif ?? 'Vente',
                 ]);
 
-                // 2. Parcourir chaque produit du panier
                 foreach ($request->items as $item) {
                     $product = Product::where('boutique_id', $boutiqueId)
                         ->where('id', $item['product_id'])
@@ -150,25 +177,21 @@ class SaleController extends Controller
                     $oldStock = $product->quantity;
                     $quantitySold = $item['quantity'];
                     $newStock = $oldStock - $quantitySold;
-                    
-                    // Utilisation et fixation du prix de vente actuel dans l'historique de la vente
-                    $unitPrice = (float) $product->selling_price;
+
+                    $unitPrice = (float) $item['unit_price'];
                     $lineTotal = $quantitySold * $unitPrice;
                     $totalSaleAmount += $lineTotal;
 
-                    // Attacher dans la table pivot avec stockage du prix unitaire figé
                     $movement->products()->attach($product->id, [
                         'qty' => $quantitySold,
-                        'unit_price' => $unitPrice
+                        'unit_price' => $unitPrice,
                     ]);
 
-                    // Décrémenter le stock et mettre à jour le statut
                     $product->update([
                         'quantity' => $newStock,
                         'status' => $newStock > 0 ? 'disponible' : 'rupture'
                     ]);
 
-                    // Historique global des stocks
                     StockMovement::create([
                         'boutique_id' => $boutiqueId,
                         'product_id'  => $product->id,
@@ -181,7 +204,6 @@ class SaleController extends Controller
                     ]);
                 }
 
-                // 3. Enregistrer l'entrée dans la caisse
                 CashMovement::create([
                     'boutique_id' => $boutiqueId,
                     'movement_id' => $movement->id,
@@ -271,7 +293,6 @@ class SaleController extends Controller
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
                 $qte = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                // Utilisation du prix unitaire figé dans le pivot
                 $prix = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
                 return $qte * $prix;
             });
@@ -295,7 +316,6 @@ class SaleController extends Controller
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
                 $qte = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                // Utilisation du prix unitaire figé dans le pivot
                 $prix = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
                 return $qte * $prix;
             });
