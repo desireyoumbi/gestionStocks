@@ -184,6 +184,9 @@ class DashboardController extends Controller
         if ($driver === 'sqlite') {
             $monthExpr = "CAST(strftime('%m', movements.created_at) AS INTEGER)";
             $yearExpr = "CAST(strftime('%Y', movements.created_at) AS INTEGER)";
+        } elseif ($driver === 'pgsql') {
+            $monthExpr = "EXTRACT(MONTH FROM movements.created_at)";
+            $yearExpr = "EXTRACT(YEAR FROM movements.created_at)";
         } else {
             $monthExpr = 'MONTH(movements.created_at)';
             $yearExpr = 'YEAR(movements.created_at)';
