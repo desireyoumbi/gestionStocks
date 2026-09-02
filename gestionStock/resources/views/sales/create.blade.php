@@ -55,7 +55,7 @@
                         <!-- Prix de vente unitaire (Modifiable / Négocié) -->
                         <div class="w-36">
                             <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Prix Unitaire</label>
-                            <input type="number" :name="`items[${index}][selling_price]`" x-model.number="row.selling_price" min="1" step="any" required class="w-full px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500">
+                            <input type="number" :name="`items[${index}][unit_price]`" x-model.number="row.selling_price" min="1" step="any" required class="w-full px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500">
                         </div>
 
                         <!-- Quantité -->
@@ -124,7 +124,8 @@
                     row.selling_price = 0;
                     return;
                 }
-                // Pré-remplit avec le prix de vente de base du produit sélectionné
+                // Pré-remplit avec le prix de vente de base du produit sélectionné,
+                // reste modifiable ensuite par l'utilisateur (négociation).
                 row.selling_price = parseFloat(productsData[row.product_id].selling_price) || 0;
             },
             getSubtotal(row) {
