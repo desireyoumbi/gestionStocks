@@ -42,22 +42,20 @@
                         <!-- Sélection du produit -->
                         <div class="flex-1 min-w-[200px]">
                             <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Produit</label>
-                            <select :name="`items[${index}][product_id]`" x-model="row.product_id" required class="w-full px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500">
+                            <select :name="`items[${index}][product_id]`" x-model="row.product_id" @change="updatePrice(row)" required class="w-full px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500">
                                 <option value="">-- Choisir un produit --</option>
                                 @foreach($products as $product)
-                                    <option value="{{ $product->id }}">
+                                    <option value="{{ $product->id }}" data-price="{{ $product->selling_price }}">
                                         {{ $product->name }} (Stock : {{ $product->quantity }}) {{ $product->quantity <= 0 ? ' [ÉPUISÉ]' : '' }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- Prix unitaire affiché -->
-                        <div class="w-28">
-                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">P.U.</label>
-                            <div class="px-3 py-2.5 bg-gray-100 dark:bg-gray-800/80 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                <span x-text="formatNumber(getPrice(row.product_id))"></span> F
-                            </div>
+                        <!-- Prix de vente unitaire (Modifiable / Négocié) -->
+                        <div class="w-36">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Prix Unitaire</label>
+                            <input type="number" :name="`items[${index}][selling_price]`" x-model.number="row.selling_price" min="1" step="any" required class="w-full px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:border-amber-500">
                         </div>
 
                         <!-- Quantité -->
@@ -112,21 +110,25 @@
 
     function saleForm() {
         return {
-            rows: [{ product_id: '', quantity: 1 }],
+            rows: [{ product_id: '', quantity: 1, selling_price: 0 }],
             addRow() {
-                this.rows.push({ product_id: '', quantity: 1 });
+                this.rows.push({ product_id: '', quantity: 1, selling_price: 0 });
             },
             removeRow(index) {
                 if (this.rows.length > 1) {
                     this.rows.splice(index, 1);
                 }
             },
-            getPrice(productId) {
-                if (!productId || !productsData[productId]) return 0;
-                return parseFloat(productsData[productId].selling_price) || 0;
+            updatePrice(row) {
+                if (!row.product_id || !productsData[row.product_id]) {
+                    row.selling_price = 0;
+                    return;
+                }
+                // Pré-remplit avec le prix de vente de base du produit sélectionné
+                row.selling_price = parseFloat(productsData[row.product_id].selling_price) || 0;
             },
             getSubtotal(row) {
-                const price = this.getPrice(row.product_id);
+                const price = parseFloat(row.selling_price) || 0;
                 const qty = parseInt(row.quantity) || 0;
                 return price * qty;
             },

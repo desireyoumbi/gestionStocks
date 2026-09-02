@@ -38,6 +38,17 @@
                 </div>
             @endif
 
+            {{-- Champ du prix de vente négociable (affiché uniquement pour une vente) --}}
+            @if($actionType === 'sell')
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-2">Prix de vente unitaire (Négocié)</label>
+                    <input type="number" name="selling_price" value="{{ $product->selling_price }}" min="1" step="any" required
+                           class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3 font-mono font-bold text-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                           placeholder="Entrez le prix">
+                    <p class="text-[10px] text-gray-400 mt-1">Prix indicatif de base : <span class="font-semibold">{{ number_format($product->selling_price, 0, ',', ' ') }} FCFA</span></p>
+                </div>
+            @endif
+
             <div>
                 <label class="block text-xs font-bold text-gray-700 mb-2">Quantité à {{ $actionType === 'sell' ? 'vendre' : 'ajouter' }}</label>
                 <input type="number" name="quantity" value="1" min="1" autofocus

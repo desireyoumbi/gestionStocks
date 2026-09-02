@@ -18,6 +18,7 @@ class Movement extends Model
         'purchase_order_id',
         'updated_by',
         'client_phone', // <- Ajouté ici
+        'annule_at',
     ];
 
     protected $casts = [

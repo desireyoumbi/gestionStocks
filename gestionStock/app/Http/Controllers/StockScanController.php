@@ -56,7 +56,8 @@ class StockScanController extends Controller
             'reference'  => 'nullable|string|max:255',
             'action_type' => 'required|in:sell,supply',
             'quantity' => 'required|integer|min:1',
-            'supplier_id' => 'required_if:action_type,supply|nullable|exists:suppliers,id'
+            'supplier_id' => 'required_if:action_type,supply|nullable|exists:suppliers,id',
+            'selling_price' => 'required_if:action_type,sell|numeric|min:1',
         ]);
 
         $boutiqueId = Auth::user()->boutique_id;
@@ -80,7 +81,10 @@ class StockScanController extends Controller
 
                     $oldStock = $product->quantity;
                     $newStock = $oldStock - $quantity;
-                    $totalSaleAmount = $quantity * $product->selling_price;
+                    
+                    // Utilisation du prix négocié transmis par le formulaire (avec repli de sécurité sur le prix de base)
+                    $negotiatedPrice = $request->input('selling_price', $product->selling_price);
+                    $totalSaleAmount = $quantity * $negotiatedPrice;
 
                     $product->update([
                         'quantity' => $newStock,
@@ -119,7 +123,7 @@ class StockScanController extends Controller
                         'is_unjustified' => false,
                     ]);
 
-                    $message = 'Vente et encaissement enregistrés avec succès : ' . $quantity . 'x ' . $product->name;
+                    $message = 'Vente et encaissement enregistrés avec succès : ' . $quantity . 'x ' . $product->name . ' (' . number_format($negotiatedPrice, 0, ',', ' ') . ' FCFA /u)';
 
                 } elseif ($request->action_type === 'supply') {
                     // Double vérification de sécurité : s'assurer que le fournisseur choisi livre bien ce produit

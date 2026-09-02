@@ -62,13 +62,13 @@ class SaleController extends Controller
             ->whereNull('movements.annule_at')
             ->sum(DB::raw('ABS(qty)')) ?? 0;
 
+        // Correction du calcul du CA en tenant compte du prix unitaire négocié stocké dans la table pivot
         $chiffreAffairesTotal = DB::table('movement_products')
             ->join('movements', 'movement_products.movement_id', '=', 'movements.id')
-            ->join('products', 'movement_products.product_id', '=', 'products.id')
             ->where('movements.boutique_id', $boutiqueId)
             ->where('movements.type', 'sortie')
             ->whereNull('movements.annule_at')
-            ->sum(DB::raw('ABS(movement_products.qty) * products.selling_price')) ?? 0;
+            ->sum(DB::raw('ABS(movement_products.qty) * movement_products.unit_price')) ?? 0;
 
         $panierMoyen = $totalVentesCount > 0 ? number_format($chiffreAffairesTotal / $totalVentesCount, 0, ',', ' ') . ' FCFA' : '0 FCFA';
 
@@ -112,7 +112,7 @@ class SaleController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id;
 
-        // Validation stricte incluant l'appartenance des produits à la boutique
+        // Validation stricte incluant l'appartenance des produits et la gestion du prix de vente négocié par article
         $request->validate([
             'motif' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
@@ -121,9 +121,12 @@ class SaleController extends Controller
                 Rule::exists('products', 'id')->where('boutique_id', $boutiqueId),
             ],
             'items.*.quantity' => 'required|integer|min:1|max:2147483647',
+            'items.*.selling_price' => 'required|numeric|min:1',
         ], [
             'items.*.product_id.exists' => 'Un ou plusieurs produits sélectionnés sont invalides.',
             'items.*.quantity.max' => 'La quantité demandée est trop élevée.',
+            'items.*.selling_price.required' => 'Le prix de vente est obligatoire pour chaque article.',
+            'items.*.selling_price.min' => 'Le prix de vente doit être supérieur ou égal à 1.',
         ]);
 
         try {
@@ -154,11 +157,17 @@ class SaleController extends Controller
                     $oldStock = $product->quantity;
                     $quantitySold = $item['quantity'];
                     $newStock = $oldStock - $quantitySold;
+                    
+                    // Récupération du prix négocié transmis pour cet article spécifique
+                    $negotiatedPrice = (float) $item['selling_price'];
+                    $lineTotal = $quantitySold * $negotiatedPrice;
+                    $totalSaleAmount += $lineTotal;
 
-                    $totalSaleAmount += $quantitySold * $product->selling_price;
-
-                    // Attacher dans la table pivot movement_products
-                    $movement->products()->attach($product->id, ['qty' => $quantitySold]);
+                    // Attacher dans la table pivot movement_products en stockant le prix unitaire appliqué
+                    $movement->products()->attach($product->id, [
+                        'qty' => $quantitySold,
+                        'unit_price' => $negotiatedPrice
+                    ]);
 
                     // Décrémenter le stock et mettre à jour le statut si besoin
                     $product->update([
@@ -179,7 +188,7 @@ class SaleController extends Controller
                     ]);
                 }
 
-                // 3. Enregistrer l'entrée dans la caisse, liée au mouvement via movement_id
+                // 3. Enregistrer l'entrée dans la caisse avec le montant total réellement encaissé (incluant les négociations)
                 CashMovement::create([
                     'boutique_id' => $boutiqueId,
                     'movement_id' => $movement->id,
@@ -278,7 +287,8 @@ class SaleController extends Controller
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
                 $qte = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                $prix = $product->selling_price ?? 0;
+                // Utilisation du prix unitaire négocié de la table pivot si disponible, sinon repli sur le prix de base
+                $prix = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
                 return $qte * $prix;
             });
         });
@@ -301,7 +311,7 @@ class SaleController extends Controller
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
                 $qte = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                $prix = $product->selling_price ?? 0;
+                $prix = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
                 return $qte * $prix;
             });
         });
