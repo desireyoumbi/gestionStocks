@@ -135,6 +135,8 @@
                                     <td class="py-3 px-6 text-xs font-bold">
                                         @if($supply->purchaseOrder && $supply->purchaseOrder->supplier)
                                             <span class="text-amber-600">{{ $supply->purchaseOrder->supplier->name }}</span>
+                                        @elseif($supply->supplier)
+                                            <span class="text-amber-600">{{ $supply->supplier->name }}</span>
                                         @else
                                             <span class="text-gray-400 font-normal">Direct / Aucun</span>
                                         @endif
@@ -158,7 +160,6 @@
                                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
                                                     Actif
                                                 </span>
-
 
                                                 <!-- Formulaire d'Annulation -->
                                                 <form action="{{ route('supplies.destroy', $supply->id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cet approvisionnement ? Cela va déduire le stock et rééquilibrer la caisse.');">

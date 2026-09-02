@@ -22,8 +22,6 @@ class SaleController extends Controller
         $boutiqueId = Auth::user()->boutique_id;
 
         // 1. La requête principale (pour la liste paginée)
-        // On affiche toutes les ventes (annulées incluses) pour garder une trace visible,
-        // mais on pourra les distinguer visuellement dans la vue grâce à annule_at.
         $query = Movement::with(['products', 'user'])
             ->where('boutique_id', $boutiqueId)
             ->where('type', 'sortie');
@@ -47,8 +45,7 @@ class SaleController extends Controller
         });
 
         // 3. CALCULS POUR LES CARTES STATISTIQUES
-        // On exclut systématiquement les ventes annulées (annule_at non nul) de tous les totaux,
-        // pour ne jamais fausser le chiffre d'affaires avec des opérations neutralisées.
+        // On exclut systématiquement les ventes annulées (annule_at non nul) de tous les totaux.
         $baseVentesQuery = Movement::where('boutique_id', $boutiqueId)
             ->where('type', 'sortie')
             ->whereNull('annule_at');
@@ -62,13 +59,14 @@ class SaleController extends Controller
             ->whereNull('movements.annule_at')
             ->sum(DB::raw('ABS(qty)')) ?? 0;
 
-        // Correction du calcul du CA en tenant compte du prix unitaire négocié stocké dans la table pivot
+        // Correction du calcul du CA en allant chercher le prix de vente directement dans la table products
         $chiffreAffairesTotal = DB::table('movement_products')
             ->join('movements', 'movement_products.movement_id', '=', 'movements.id')
+            ->join('products', 'movement_products.product_id', '=', 'products.id')
             ->where('movements.boutique_id', $boutiqueId)
             ->where('movements.type', 'sortie')
             ->whereNull('movements.annule_at')
-            ->sum(DB::raw('ABS(movement_products.qty) * movement_products.unit_price')) ?? 0;
+            ->sum(DB::raw('ABS(movement_products.qty) * products.selling_price')) ?? 0;
 
         $panierMoyen = $totalVentesCount > 0 ? number_format($chiffreAffairesTotal / $totalVentesCount, 0, ',', ' ') . ' FCFA' : '0 FCFA';
 
@@ -112,7 +110,7 @@ class SaleController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id;
 
-        // Validation stricte incluant l'appartenance des produits et la gestion du prix de vente négocié par article
+        // Validation (on garde les règles de base, sans exiger un input de prix puisque le prix vient du produit)
         $request->validate([
             'motif' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
@@ -121,12 +119,9 @@ class SaleController extends Controller
                 Rule::exists('products', 'id')->where('boutique_id', $boutiqueId),
             ],
             'items.*.quantity' => 'required|integer|min:1|max:2147483647',
-            'items.*.selling_price' => 'required|numeric|min:1',
         ], [
             'items.*.product_id.exists' => 'Un ou plusieurs produits sélectionnés sont invalides.',
             'items.*.quantity.max' => 'La quantité demandée est trop élevée.',
-            'items.*.selling_price.required' => 'Le prix de vente est obligatoire pour chaque article.',
-            'items.*.selling_price.min' => 'Le prix de vente doit être supérieur ou égal à 1.',
         ]);
 
         try {
@@ -134,7 +129,7 @@ class SaleController extends Controller
                 $user = Auth::user();
                 $totalSaleAmount = 0;
 
-                // 1. Créer le mouvement global de vente (valide par défaut, annule_at = null)
+                // 1. Créer le mouvement global de vente
                 $movement = Movement::create([
                     'boutique_id' => $boutiqueId,
                     'type' => 'sortie',
@@ -143,7 +138,7 @@ class SaleController extends Controller
                     'motif' => $request->motif ?? 'Vente',
                 ]);
 
-                // 2. Parcourir chaque produit du panier avec verrouillage anti-concurrence
+                // 2. Parcourir chaque produit du panier
                 foreach ($request->items as $item) {
                     $product = Product::where('boutique_id', $boutiqueId)
                         ->where('id', $item['product_id'])
@@ -158,18 +153,17 @@ class SaleController extends Controller
                     $quantitySold = $item['quantity'];
                     $newStock = $oldStock - $quantitySold;
                     
-                    // Récupération du prix négocié transmis pour cet article spécifique
-                    $negotiatedPrice = (float) $item['selling_price'];
-                    $lineTotal = $quantitySold * $negotiatedPrice;
+                    // Utilisation stricte du prix catalogue de la table products
+                    $unitPrice = (float) $product->selling_price;
+                    $lineTotal = $quantitySold * $unitPrice;
                     $totalSaleAmount += $lineTotal;
 
-                    // Attacher dans la table pivot movement_products en stockant le prix unitaire appliqué
+                    // Attacher dans la table pivot (uniquement les colonnes de liaison et de quantité)
                     $movement->products()->attach($product->id, [
-                        'qty' => $quantitySold,
-                        'unit_price' => $negotiatedPrice
+                        'qty' => $quantitySold
                     ]);
 
-                    // Décrémenter le stock et mettre à jour le statut si besoin
+                    // Décrémenter le stock et mettre à jour le statut
                     $product->update([
                         'quantity' => $newStock,
                         'status' => $newStock > 0 ? 'disponible' : 'rupture'
@@ -188,7 +182,7 @@ class SaleController extends Controller
                     ]);
                 }
 
-                // 3. Enregistrer l'entrée dans la caisse avec le montant total réellement encaissé (incluant les négociations)
+                // 3. Enregistrer l'entrée dans la caisse
                 CashMovement::create([
                     'boutique_id' => $boutiqueId,
                     'movement_id' => $movement->id,
@@ -210,9 +204,7 @@ class SaleController extends Controller
 
     /**
      * Annule une vente : restitue le stock, supprime l'entrée de caisse liée,
-     * et marque le mouvement comme annulé (annule_at) au lieu de le supprimer.
-     * La vente reste ainsi consultable dans l'historique, mais n'est plus comptée
-     * dans aucune statistique active.
+     * et marque le mouvement comme annulé (annule_at).
      */
     public function destroy($id)
     {
@@ -224,11 +216,9 @@ class SaleController extends Controller
                 ->findOrFail($id);
 
             if ($sale->annule_at) {
-                // Déjà annulée : on ne refait pas les opérations une seconde fois
                 return;
             }
 
-            // Parcourir les produits associés pour restituer le stock avec verrouillage et isolation boutique
             foreach ($sale->products as $product) {
                 $productToUpdate = Product::where('id', $product->id)
                     ->where('boutique_id', $boutiqueId)
@@ -240,13 +230,11 @@ class SaleController extends Controller
                     $oldStock = $productToUpdate->quantity;
                     $newStock = $oldStock + $pivotQty;
 
-                    // Restituer le stock et rafraîchir le statut
                     $productToUpdate->update([
                         'quantity' => $newStock,
                         'status' => 'disponible'
                     ]);
 
-                    // Traçabilité de l'annulation dans l'historique
                     StockMovement::create([
                         'boutique_id' => $boutiqueId,
                         'product_id'  => $productToUpdate->id,
@@ -260,12 +248,10 @@ class SaleController extends Controller
                 }
             }
 
-            // Supprimer l'encaissement correspondant dans la caisse
             CashMovement::where('boutique_id', $boutiqueId)
                 ->where('movement_id', $sale->id)
                 ->delete();
 
-            // Marquer le mouvement comme annulé plutôt que le supprimer
             $sale->update(['annule_at' => now()]);
         });
 
@@ -276,7 +262,6 @@ class SaleController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id; 
         
-        // On exclut les ventes annulées de l'export PDF, cohérent avec les statistiques
         $sales = Movement::where('boutique_id', $boutiqueId)
             ->where('type', 'sortie')
             ->whereNull('annule_at')
@@ -287,8 +272,7 @@ class SaleController extends Controller
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
                 $qte = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                // Utilisation du prix unitaire négocié de la table pivot si disponible, sinon repli sur le prix de base
-                $prix = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
+                $prix = $product->selling_price ?? 0;
                 return $qte * $prix;
             });
         });
@@ -311,7 +295,7 @@ class SaleController extends Controller
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
                 $qte = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                $prix = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
+                $prix = $product->selling_price ?? 0;
                 return $qte * $prix;
             });
         });
