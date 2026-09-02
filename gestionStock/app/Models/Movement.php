@@ -23,6 +23,7 @@ class Movement extends Model
 
     protected $casts = [
         'date' => 'date',
+        'annule_at' => 'datetime',
     ];
 
     public function boutique()

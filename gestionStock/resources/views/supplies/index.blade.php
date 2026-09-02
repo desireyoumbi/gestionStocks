@@ -153,9 +153,10 @@
                                     <td class="py-3 px-6 text-right">
                                         <div class="flex items-center justify-end gap-2">
                                             @if($supply->annule_at)
-                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100" title="Annulé le {{ \Carbon\Carbon::parse($supply->annule_at)->format('d/m/Y H:i') }}">
+                                                <!-- Bouton "Annulé" inactif et stylé élégamment à la place de l'icône de suppression -->
+                                                <button type="button" disabled class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-bold rounded-lg cursor-not-allowed shadow-none border border-gray-200 dark:border-gray-700" title="Déjà annulé le {{ $supply->annule_at->format('d/m/Y à H:i') }}">
                                                     Annulé
-                                                </span>
+                                                </button>
                                             @else
                                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
                                                     Actif
