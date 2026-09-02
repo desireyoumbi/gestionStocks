@@ -22,7 +22,7 @@
         </div>
     @endif
 
-    <!-- 1. CARTES STATISTIQUES GLOBALES (Page actuelle) -->
+    <!-- 1. CARTES STATISTIQUES GLOBALES -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
             <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
@@ -65,7 +65,6 @@
         </form>
 
         <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <!-- Bouton PDF Global -->
             <a href="{{ route('supplies.export.all.pdf') }}" class="flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white font-bold text-sm rounded-xl shadow-sm transition">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 PDF Global
@@ -82,7 +81,6 @@
     <div class="space-y-6">
         @forelse($groupedSupplies as $date => $suppliesOfDay)
             @php
-                // Calculs incluant uniquement les lignes actives pour les statistiques journalières affichées
                 $activeSuppliesOfDay = $suppliesOfDay->whereNull('annule_at');
                 $dayOperations = $activeSuppliesOfDay->count();
                 $dayArticles = $activeSuppliesOfDay->sum(fn($s) => $s->products->sum('pivot.qty'));
@@ -94,7 +92,6 @@
             @endphp
 
             <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
-                <!-- En-tête du jour avec statistiques et bouton PDF du jour -->
                 <div class="bg-gray-50/75 dark:bg-gray-900/75 px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
                     <h4 class="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -108,7 +105,6 @@
                             <span class="text-[10px] font-bold text-amber-600 uppercase">{{ number_format($dayExpenses, 0, ',', ' ') }} FCFA</span>
                         </div>
 
-                        <!-- Bouton PDF pour ce jour précis -->
                         <a href="{{ route('supplies.export.day.pdf', ['date' => $date]) }}" title="Télécharger le PDF de cette journée" class="p-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white rounded-lg transition text-xs font-bold flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             <span class="hidden sm:inline">PDF</span>
@@ -153,8 +149,8 @@
                                     <td class="py-3 px-6 text-right">
                                         <div class="flex items-center justify-end gap-2">
                                             @if($supply->annule_at)
-                                                <!-- Bouton "Annulé" inactif et stylé élégamment à la place de l'icône de suppression -->
-                                                <button type="button" disabled class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-bold rounded-lg cursor-not-allowed shadow-none border border-gray-200 dark:border-gray-700" title="Déjà annulé le {{ $supply->annule_at->format('d/m/Y à H:i') }}">
+                                                <!-- Bouton "Annulé" inactif, élégant à la place de l'ancienne icône -->
+                                                <button type="button" disabled class="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-bold rounded-xl cursor-not-allowed border border-gray-200 dark:border-gray-700">
                                                     Annulé
                                                 </button>
                                             @else
@@ -162,12 +158,12 @@
                                                     Actif
                                                 </span>
 
-                                                <!-- Formulaire d'Annulation -->
+                                                <!-- Formulaire d'Annulation avec bouton texte propre -->
                                                 <form action="{{ route('supplies.destroy', $supply->id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cet approvisionnement ? Cela va déduire le stock et rééquilibrer la caisse.');">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="p-1.5 bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white rounded-lg transition" title="Annuler l'approvisionnement">
-                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    <button type="submit" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white text-xs font-bold rounded-xl transition flex items-center gap-1" title="Annuler l'approvisionnement">
+                                                        <span>Annuler</span>
                                                     </button>
                                                 </form>
                                             @endif

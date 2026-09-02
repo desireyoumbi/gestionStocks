@@ -49,7 +49,7 @@ class Movement extends Model
     public function products()
     {
         return $this->belongsToMany(Product::class, 'movement_products')
-                    ->withPivot('qty')
+                    ->withPivot('qty','unit_price')
                     ->withTimestamps();
     }
 }

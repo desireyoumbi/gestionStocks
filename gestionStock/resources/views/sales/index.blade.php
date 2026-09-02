@@ -81,8 +81,6 @@
     <div class="space-y-6" id="salesContainer">
         @forelse($groupedSales as $date => $salesOfDay)
             @php
-                // Les totaux du jour n'incluent QUE les ventes actives (non annulées),
-                // pour rester cohérents avec les statistiques globales de la page.
                 $ventesActivesDuJour = $salesOfDay->whereNull('annule_at');
                 $nbOperations = $ventesActivesDuJour->count();
                 $nbArticlesJour = 0;
@@ -91,7 +89,7 @@
                 foreach($ventesActivesDuJour as $sale) {
                     foreach($sale->products as $product) {
                         $qty = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                        $price = $product->selling_price ?? 0;
+                        $price = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
                         $nbArticlesJour += $qty;
                         $totalMontantJour += ($qty * $price);
                     }
@@ -138,7 +136,7 @@
                                 @foreach($sale->products as $product)
                                     @php
                                         $qty = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                                        $price = $product->selling_price ?? 0;
+                                        $price = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
                                         $lineTotal = $qty * $price;
                                     @endphp
                                     <tr class="hover:bg-gray-50/50 transition sale-row {{ $estAnnulee ? 'opacity-50' : '' }}">
@@ -157,7 +155,7 @@
                                                 {{ $product->name }} <span class="font-bold text-rose-500">(x{{ $qty }})</span>
                                             </span>
                                         </td>
-                                        <td class="p-4 sale-price {{ $estAnnulee ? 'line-through' : '' }}">{{ number_format($price, 0, ',', ' ') }}</td>
+                                        <td class="p-4 sale-price {{ $estAnnulee ? 'line-through' : '' }}">{{ number_format($price, 0, ',', ' ') }} FCFA</td>
                                         <td class="p-4 font-bold text-gray-900 dark:text-white sale-total {{ $estAnnulee ? 'line-through' : '' }}">{{ number_format($lineTotal, 0, ',', ' ') }} FCFA</td>
                                         <td class="p-4 text-gray-500 sale-motif">{{ $sale->motif ?? '-' }}</td>
                                         <td class="p-4 text-right">
@@ -166,7 +164,6 @@
                                                     Annulée le {{ $sale->annule_at->format('d/m/Y à H:i') }}
                                                 </span>
                                             @else
-                                                <!-- Bouton d'annulation de vente sécurisé -->
                                                 <form action="{{ route('sales.destroy', $sale->id) }}" method="POST" onsubmit="return confirm('Voulez-vous vraiment annuler cette vente ? Le stock sera restitué et la caisse mise à jour.');" class="inline-block">
                                                     @csrf
                                                     @method('DELETE')
@@ -188,7 +185,6 @@
         @endforelse
     </div>
         
-    <!-- Pagination -->
     @if(isset($sales) && $sales->hasPages())
         <div class="mt-6">
             {{ $sales->links() }}
@@ -197,12 +193,11 @@
 
 </div>
 
-<!-- MODALE DE SUCCÈS ET REÇU WHATSAPP INTÉGRÉE ICI -->
+<!-- MODALE DE SUCCÈS ET REÇU WHATSAPP -->
 @if(session('success_sale'))
 @php
     $sale = session('success_sale');
     
-    // Récupération sécurisée du nom de la boutique basé sur la colonne 'nom'
     $boutiqueName = 'E-STOCKY';
     if ($sale && $sale->user && isset($sale->user->boutique) && $sale->user->boutique) {
         $boutiqueName = $sale->user->boutique->nom;
@@ -214,7 +209,8 @@
     if ($sale && $sale->products) {
         foreach($sale->products as $product) {
             $qty = $product->pivot->qty ?? ($product->pivot->quantity ?? 1);
-            $totalAmount += $qty * $product->selling_price;
+            $unitPrice = $product->pivot->unit_price ?? $product->selling_price;
+            $totalAmount += $qty * $unitPrice;
         }
     }
 
@@ -230,8 +226,9 @@
     if ($sale && $sale->products) {
         foreach($sale->products as $product) {
             $qty = $product->pivot->qty ?? ($product->pivot->quantity ?? 1);
-            $subtotal = $qty * $product->selling_price;
-            $whatsappText .= "▪ " . $qty . "x " . $product->name . " (" . number_format($product->selling_price, 0, ',', ' ') . " F) = *" . number_format($subtotal, 0, ',', ' ') . " FCFA*%0A";
+            $unitPrice = $product->pivot->unit_price ?? $product->selling_price;
+            $subtotal = $qty * $unitPrice;
+            $whatsappText .= "▪ " . $qty . "x " . $product->name . " (" . number_format($unitPrice, 0, ',', ' ') . " F) = *" . number_format($subtotal, 0, ',', ' ') . " FCFA*%0A";
         }
     }
     
@@ -245,11 +242,7 @@
         $phone = '237' . $phone;
     }
     
-    if (!empty($phone)) {
-        $whatsappUrl = "https://web.whatsapp.com/send?phone=" . $phone . "&text=" . $whatsappText;
-    } else {
-        $whatsappUrl = "https://web.whatsapp.com/";
-    }
+    $whatsappUrl = !empty($phone) ? "https://web.whatsapp.com/send?phone=" . $phone . "&text=" . $whatsappText : "https://web.whatsapp.com/";
 @endphp
 
 <div id="modal-success-sale" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-4 backdrop-blur-sm">
@@ -272,10 +265,13 @@
             <div class="space-y-1.5 max-h-32 overflow-y-auto">
                 @if($sale->products)
                     @foreach($sale->products as $product)
-                        @php $q = $product->pivot->qty ?? ($product->pivot->quantity ?? 1); @endphp
+                        @php 
+                            $q = $product->pivot->qty ?? ($product->pivot->quantity ?? 1); 
+                            $unitPrice = $product->pivot->unit_price ?? $product->selling_price;
+                        @endphp
                         <div class="flex justify-between">
                             <span>{{ $q }}x {{ $product->name }}</span>
-                            <span class="font-bold text-gray-900 dark:text-gray-100">{{ number_format($q * $product->selling_price, 0, ',', ' ') }} F</span>
+                            <span class="font-bold text-gray-900 dark:text-gray-100">{{ number_format($q * $unitPrice, 0, ',', ' ') }} F</span>
                         </div>
                     @endforeach
                 @endif
@@ -306,7 +302,7 @@
 </div>
 @endif
 
-<!-- SCRIPT DE RECHERCHE INSTANTANÉE -->
+<!-- SCRIPT DE RECHERCHE INSTANTANÉE OPTIMISÉ -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('liveSearch');
@@ -322,24 +318,9 @@
                 let groupHasVisibleRow = false;
 
                 rows.forEach(row => {
-                    let time = row.querySelector('.sale-time')?.textContent.toLowerCase() || '';
-                    let id = row.querySelector('.sale-id')?.textContent.toLowerCase() || '';
-                    let user = row.querySelector('.sale-user')?.textContent.toLowerCase() || '';
-                    let product = row.querySelector('.sale-product')?.textContent.toLowerCase() || '';
-                    let price = row.querySelector('.sale-price')?.textContent.toLowerCase() || '';
-                    let total = row.querySelector('.sale-total')?.textContent.toLowerCase() || '';
-                    let motif = row.querySelector('.sale-motif')?.textContent.toLowerCase() || '';
+                    let textContent = row.textContent.toLowerCase();
 
-                    if (
-                        time.includes(term) || 
-                        id.includes(term) || 
-                        user.includes(term) || 
-                        product.includes(term) || 
-                        price.includes(term) || 
-                        total.includes(term) || 
-                        motif.includes(term) || 
-                        dateText.includes(term)
-                    ) {
+                    if (textContent.includes(term) || dateText.includes(term)) {
                         row.style.display = '';
                         groupHasVisibleRow = true;
                     } else {

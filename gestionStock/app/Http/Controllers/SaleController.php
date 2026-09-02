@@ -59,14 +59,13 @@ class SaleController extends Controller
             ->whereNull('movements.annule_at')
             ->sum(DB::raw('ABS(qty)')) ?? 0;
 
-        // Correction du calcul du CA en allant chercher le prix de vente directement dans la table products
+        // Correction du calcul du CA en allant chercher le prix unitaire fixé dans la table pivot (movement_products)
         $chiffreAffairesTotal = DB::table('movement_products')
             ->join('movements', 'movement_products.movement_id', '=', 'movements.id')
-            ->join('products', 'movement_products.product_id', '=', 'products.id')
             ->where('movements.boutique_id', $boutiqueId)
             ->where('movements.type', 'sortie')
             ->whereNull('movements.annule_at')
-            ->sum(DB::raw('ABS(movement_products.qty) * products.selling_price')) ?? 0;
+            ->sum(DB::raw('ABS(movement_products.qty) * movement_products.unit_price')) ?? 0;
 
         $panierMoyen = $totalVentesCount > 0 ? number_format($chiffreAffairesTotal / $totalVentesCount, 0, ',', ' ') . ' FCFA' : '0 FCFA';
 
@@ -110,7 +109,6 @@ class SaleController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id;
 
-        // Validation (on garde les règles de base, sans exiger un input de prix puisque le prix vient du produit)
         $request->validate([
             'motif' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
@@ -153,14 +151,15 @@ class SaleController extends Controller
                     $quantitySold = $item['quantity'];
                     $newStock = $oldStock - $quantitySold;
                     
-                    // Utilisation stricte du prix catalogue de la table products
+                    // Utilisation et fixation du prix de vente actuel dans l'historique de la vente
                     $unitPrice = (float) $product->selling_price;
                     $lineTotal = $quantitySold * $unitPrice;
                     $totalSaleAmount += $lineTotal;
 
-                    // Attacher dans la table pivot (uniquement les colonnes de liaison et de quantité)
+                    // Attacher dans la table pivot avec stockage du prix unitaire figé
                     $movement->products()->attach($product->id, [
-                        'qty' => $quantitySold
+                        'qty' => $quantitySold,
+                        'unit_price' => $unitPrice
                     ]);
 
                     // Décrémenter le stock et mettre à jour le statut
@@ -272,7 +271,8 @@ class SaleController extends Controller
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
                 $qte = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                $prix = $product->selling_price ?? 0;
+                // Utilisation du prix unitaire figé dans le pivot
+                $prix = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
                 return $qte * $prix;
             });
         });
@@ -295,7 +295,8 @@ class SaleController extends Controller
         $totalGeneral = $sales->sum(function ($sale) {
             return $sale->products->sum(function ($product) {
                 $qte = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
-                $prix = $product->selling_price ?? 0;
+                // Utilisation du prix unitaire figé dans le pivot
+                $prix = $product->pivot->unit_price ?? ($product->selling_price ?? 0);
                 return $qte * $prix;
             });
         });
