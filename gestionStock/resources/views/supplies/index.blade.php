@@ -14,6 +14,14 @@
         </div>
     @endif
 
+    <!-- Message d'erreur -->
+    @if(session('error'))
+        <div class="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-semibold flex items-center justify-between shadow-sm">
+            <span>{{ session('error') }}</span>
+            <button onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900 font-bold">✕</button>
+        </div>
+    @endif
+
     <!-- 1. CARTES STATISTIQUES GLOBALES (Page actuelle) -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
@@ -74,9 +82,11 @@
     <div class="space-y-6">
         @forelse($groupedSupplies as $date => $suppliesOfDay)
             @php
-                $dayOperations = $suppliesOfDay->count();
-                $dayArticles = $suppliesOfDay->sum(fn($s) => $s->products->sum('pivot.qty'));
-                $dayExpenses = $suppliesOfDay->sum(function($s) {
+                // Calculs incluant uniquement les lignes actives pour les statistiques journalières affichées
+                $activeSuppliesOfDay = $suppliesOfDay->whereNull('annule_at');
+                $dayOperations = $activeSuppliesOfDay->count();
+                $dayArticles = $activeSuppliesOfDay->sum(fn($s) => $s->products->sum('pivot.qty'));
+                $dayExpenses = $activeSuppliesOfDay->sum(function($s) {
                     return $s->products->sum(function($p) {
                         return $p->pivot->qty * $p->purchase_price;
                     });
@@ -120,7 +130,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-900 text-sm">
                             @foreach($suppliesOfDay as $supply)
-                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition">
+                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition @if($supply->annule_at) opacity-60 bg-red-50/20 dark:bg-red-950/10 @endif">
                                     <td class="py-3 px-6 text-gray-500">{{ $supply->created_at->format('H:i') }}</td>
                                     <td class="py-3 px-6 text-xs font-bold">
                                         @if($supply->purchaseOrder && $supply->purchaseOrder->supplier)
@@ -136,24 +146,33 @@
                                             @endforeach
                                         </div>
                                     </td>
-                                    <td class="py-3 px-6 font-bold text-emerald-500">+{{ $supply->products->sum('pivot.qty') }}</td>
+                                    <td class="py-3 px-6 font-bold @if($supply->annule_at) text-gray-400 line-through @else text-emerald-500 @endif">+{{ $supply->products->sum('pivot.qty') }}</td>
                                     <td class="py-3 px-6 text-gray-500">{{ $supply->motif ?? '-' }}</td>
                                     <td class="py-3 px-6 text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
-                                                Validé
-                                            </span>
+                                            @if($supply->annule_at)
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100" title="Annulé le {{ \Carbon\Carbon::parse($supply->annule_at)->format('d/m/Y H:i') }}">
+                                                    Annulé
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                                    Actif
+                                                </span>
 
-                                           
+                                                <!-- Bouton de modification -->
+                                                <a href="{{ route('supplies.edit', $supply->id) }}" class="p-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white rounded-lg transition" title="Modifier l'approvisionnement">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                </a>
 
-                                            <!-- Formulaire d'Annulation -->
-                                            <form action="{{ route('supplies.destroy', $supply->id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cet approvisionnement ? Cela va déduire le stock et rééquilibrer la caisse.');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="p-1.5 bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white rounded-lg transition" title="Annuler l'approvisionnement">
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
-                                            </form>
+                                                <!-- Formulaire d'Annulation -->
+                                                <form action="{{ route('supplies.destroy', $supply->id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir annuler cet approvisionnement ? Cela va déduire le stock et rééquilibrer la caisse.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="p-1.5 bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white rounded-lg transition" title="Annuler l'approvisionnement">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

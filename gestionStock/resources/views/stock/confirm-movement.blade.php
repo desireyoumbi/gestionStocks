@@ -22,6 +22,22 @@
             <input type="hidden" name="reference" value="{{ $product->reference }}">
             <input type="hidden" name="action_type" value="{{ $actionType }}">
 
+            {{-- Sélection obligatoire du fournisseur si c'est un approvisionnement --}}
+            @if($actionType === 'supply')
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-2">Sélectionner le fournisseur habilité</label>
+                    <select name="supplier_id" required class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                        <option value="">-- Choisir un fournisseur --</option>
+                        @foreach($product->suppliers as $supplier)
+                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                        @endforeach
+                    </select>
+                    @if($product->suppliers->isEmpty())
+                        <p class="text-xs text-red-500 mt-1">Attention : Aucun fournisseur n'est associé à ce produit dans la base.</p>
+                    @endif
+                </div>
+            @endif
+
             <div>
                 <label class="block text-xs font-bold text-gray-700 mb-2">Quantité à {{ $actionType === 'sell' ? 'vendre' : 'ajouter' }}</label>
                 <input type="number" name="quantity" value="1" min="1" autofocus

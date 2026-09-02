@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -26,8 +27,10 @@ class StockScanController extends Controller
 
         $boutiqueId = Auth::user()->boutique_id;
         
+        // Chargement du produit avec ses fournisseurs pour le cas de l'approvisionnement
         $product = Product::where('boutique_id', $boutiqueId)
             ->where('reference', $request->reference)
+            ->with('suppliers')
             ->first();
 
         if (!$product) {
@@ -50,8 +53,10 @@ class StockScanController extends Controller
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
+            'reference'  => 'nullable|string|max:255',
             'action_type' => 'required|in:sell,supply',
-            'quantity' => 'required|integer|min:1'
+            'quantity' => 'required|integer|min:1',
+            'supplier_id' => 'required_if:action_type,supply|nullable|exists:suppliers,id'
         ]);
 
         $boutiqueId = Auth::user()->boutique_id;
@@ -62,9 +67,9 @@ class StockScanController extends Controller
             $message = '';
 
             DB::transaction(function () use ($request, $boutiqueId, $quantity, $userId, &$message) {
-                // Verrouillage anti-concurrence pour éviter les conflits de stock simultanés
                 $product = Product::where('boutique_id', $boutiqueId)
                     ->where('id', $request->product_id)
+                    ->with('suppliers')
                     ->lockForUpdate()
                     ->firstOrFail();
 
@@ -77,13 +82,11 @@ class StockScanController extends Controller
                     $newStock = $oldStock - $quantity;
                     $totalSaleAmount = $quantity * $product->selling_price;
 
-                    // 1. Mettre à jour le stock et le statut
                     $product->update([
                         'quantity' => $newStock,
                         'status' => $newStock > 0 ? 'disponible' : 'rupture'
                     ]);
 
-                    // 2. Créer le mouvement de type 'sortie' (vente)
                     $movement = Movement::create([
                         'boutique_id' => $boutiqueId,
                         'type'        => 'sortie', 
@@ -94,7 +97,6 @@ class StockScanController extends Controller
 
                     $movement->products()->attach($product->id, ['qty' => $quantity]);
 
-                    // 3. Traçabilité globale des stocks
                     StockMovement::create([
                         'boutique_id' => $boutiqueId,
                         'product_id'  => $product->id,
@@ -106,7 +108,6 @@ class StockScanController extends Controller
                         'reason'      => 'Vente rapide par scan',
                     ]);
 
-                    // 4. Mouvement de caisse (Encaissement)
                     CashMovement::create([
                         'boutique_id'    => $boutiqueId,
                         'movement_id'    => $movement->id,
@@ -121,17 +122,23 @@ class StockScanController extends Controller
                     $message = 'Vente et encaissement enregistrés avec succès : ' . $quantity . 'x ' . $product->name;
 
                 } elseif ($request->action_type === 'supply') {
+                    // Double vérification de sécurité : s'assurer que le fournisseur choisi livre bien ce produit
+                    $supplierId = $request->supplier_id;
+                    $isAuthorized = $product->suppliers->contains('id', $supplierId);
+
+                    if (!$isAuthorized) {
+                        throw new \Exception('Ce fournisseur n\'est pas habilité à livrer ce produit.');
+                    }
+
                     $oldStock = $product->quantity;
                     $newStock = $oldStock + $quantity;
                     $totalCost = $quantity * $product->purchase_price;
 
-                    // 1. Mettre à jour le stock et le statut
                     $product->update([
                         'quantity' => $newStock,
                         'status' => 'disponible'
                     ]);
 
-                    // 2. Créer le mouvement de type 'entree' (approvisionnement)
                     $movement = Movement::create([
                         'boutique_id' => $boutiqueId,
                         'type'        => 'entree', 
@@ -142,7 +149,6 @@ class StockScanController extends Controller
 
                     $movement->products()->attach($product->id, ['qty' => $quantity]);
 
-                    // 3. Traçabilité globale des stocks
                     StockMovement::create([
                         'boutique_id' => $boutiqueId,
                         'product_id'  => $product->id,
@@ -154,7 +160,6 @@ class StockScanController extends Controller
                         'reason'      => 'Approvisionnement rapide par scan',
                     ]);
 
-                    // 4. Mouvement de caisse (Sortie d'argent pour l'achat)
                     CashMovement::create([
                         'boutique_id'    => $boutiqueId,
                         'movement_id'    => $movement->id,

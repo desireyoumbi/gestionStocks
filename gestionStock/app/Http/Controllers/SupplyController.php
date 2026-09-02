@@ -41,16 +41,19 @@ class SupplyController extends Controller
             });
         }
 
+        // On garde toutes les opérations visibles (y compris annulées) pour la traçabilité,
+        // mais les totaux ci-dessous n'incluront que celles encore actives.
         $suppliesPaginator = $query->latest()->paginate(15);
         $currentItems = collect($suppliesPaginator->items());
+        $currentItemsActives = $currentItems->whereNull('annule_at');
 
-        $totalOperations = $currentItems->count();
+        $totalOperations = $currentItemsActives->count();
 
-        $totalArticles = $currentItems->sum(function($movement) {
+        $totalArticles = $currentItemsActives->sum(function($movement) {
             return $movement->products->sum('pivot.qty');
         });
 
-        $totalDepenses = $currentItems->sum(function($movement) {
+        $totalDepenses = $currentItemsActives->sum(function($movement) {
             return $movement->products->sum(function($product) {
                 return $product->pivot->qty * $product->purchase_price;
             });
@@ -58,6 +61,8 @@ class SupplyController extends Controller
 
         $totalDepensesFormatted = number_format($totalDepenses, 0, ',', ' ') . ' FCFA';
 
+        // Le groupement par jour garde toutes les opérations (annulées incluses),
+        // la vue se chargera de les distinguer visuellement.
         $groupedSupplies = $currentItems->groupBy(function($supply) {
             return $supply->created_at->format('Y-m-d');
         });
@@ -249,6 +254,11 @@ class SupplyController extends Controller
 
         $supply = Movement::where('type', 'entree')->where('boutique_id', $boutiqueId)->findOrFail($id);
 
+        // On ne peut plus modifier un approvisionnement déjà annulé
+        if ($supply->annule_at) {
+            return back()->with('error', 'Impossible de modifier un approvisionnement déjà annulé.');
+        }
+
         $newTotalAmount = 0;
         foreach ($request->products as $item) {
             $newTotalAmount += $item['qty'] * $item['unit_price'];
@@ -329,20 +339,20 @@ class SupplyController extends Controller
     }
 
     /**
-     * Annule un approvisionnement (Rétro-pédalage stock et caisse).
+     * Annule un approvisionnement : retire le stock ajouté, supprime la sortie de caisse
+     * d'origine (ce qui suffit à ramener la caisse à son solde d'avant l'achat, sans créer
+     * de double correction), et marque le mouvement comme annulé au lieu de le supprimer.
      */
     public function destroy($id)
     {
         DB::transaction(function () use ($id) {
             $boutiqueId = Auth::user()->boutique_id;
             $supply = Movement::where('type', 'entree')->where('boutique_id', $boutiqueId)->findOrFail($id);
-            
-            // Récupérer le montant exact initial depuis la table des mouvements de caisse
-            $cashOutMovement = CashMovement::where('boutique_id', $boutiqueId)
-                ->where('movement_id', $supply->id)
-                ->first();
-            
-            $totalRefundAmount = $cashOutMovement ? $cashOutMovement->amount : 0;
+
+            if ($supply->annule_at) {
+                // Déjà annulé : on ne refait pas les opérations une seconde fois
+                return;
+            }
 
             foreach ($supply->products as $product) {
                 $qty = $product->pivot->qty;
@@ -351,7 +361,10 @@ class SupplyController extends Controller
                 $oldStock = $productModel->quantity;
                 $newStock = max(0, $oldStock - $qty);
 
-                $productModel->update(['quantity' => $newStock]);
+                $productModel->update([
+                    'quantity' => $newStock,
+                    'status' => $newStock > 0 ? 'disponible' : 'rupture',
+                ]);
 
                 StockMovement::create([
                     'boutique_id' => $boutiqueId,
@@ -373,27 +386,15 @@ class SupplyController extends Controller
                 }
             }
 
-            // Supprimer la sortie de caisse d'origine
-            if ($cashOutMovement) {
-                $cashOutMovement->delete();
-            }
+            // Supprimer la sortie de caisse d'origine suffit à annuler son effet sur le solde.
+            // On ne crée PAS de mouvement de remboursement en plus : cela doublerait la correction
+            // et créditerait la caisse au-delà de son solde d'avant l'achat (bug corrigé ici).
+            CashMovement::where('boutique_id', $boutiqueId)
+                ->where('movement_id', $supply->id)
+                ->delete();
 
-            // Réinjecter l'argent exact en caisse (Entrée de remboursement)
-            if ($totalRefundAmount > 0) {
-                CashMovement::create([
-                    'boutique_id' => $boutiqueId,
-                    'movement_id' => $supply->id,
-                    'user_id'     => Auth::id(),
-                    'type'        => 'in',
-                    'category'    => 'refund',
-                    'amount'      => $totalRefundAmount,
-                    'motif'       => 'Remboursement suite annulation approvisionnement #' . $supply->id,
-                    'is_unjustified' => false,
-                ]);
-            }
-
-            $supply->products()->detach();
-            $supply->delete();
+            // Marquer comme annulé plutôt que supprimer, pour garder la traçabilité
+            $supply->update(['annule_at' => now()]);
         });
 
         return back()->with('success', 'Approvisionnement annulé, stock déduit et caisse rééquilibrée avec succès.');
@@ -404,9 +405,11 @@ class SupplyController extends Controller
         $boutiqueId = Auth::user()->boutique_id;
         $date = $request->get('date', now()->format('Y-m-d'));
 
+        // On exclut les approvisionnements annulés de l'export, cohérent avec les statistiques
         $supplies = Movement::with(['products', 'user', 'purchaseOrder.supplier'])
             ->where('type', 'entree')
             ->where('boutique_id', $boutiqueId)
+            ->whereNull('annule_at')
             ->whereDate('created_at', $date)
             ->latest()
             ->get();
@@ -425,6 +428,7 @@ class SupplyController extends Controller
         $supplies = Movement::with(['products', 'user', 'purchaseOrder.supplier'])
             ->where('type', 'entree')
             ->where('boutique_id', $boutiqueId)
+            ->whereNull('annule_at')
             ->latest()
             ->get();
 

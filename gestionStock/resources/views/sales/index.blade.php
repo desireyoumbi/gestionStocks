@@ -81,11 +81,14 @@
     <div class="space-y-6" id="salesContainer">
         @forelse($groupedSales as $date => $salesOfDay)
             @php
-                $nbOperations = $salesOfDay->count();
+                // Les totaux du jour n'incluent QUE les ventes actives (non annulées),
+                // pour rester cohérents avec les statistiques globales de la page.
+                $ventesActivesDuJour = $salesOfDay->whereNull('annule_at');
+                $nbOperations = $ventesActivesDuJour->count();
                 $nbArticlesJour = 0;
                 $totalMontantJour = 0;
 
-                foreach($salesOfDay as $sale) {
+                foreach($ventesActivesDuJour as $sale) {
                     foreach($sale->products as $product) {
                         $qty = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
                         $price = $product->selling_price ?? 0;
@@ -131,33 +134,47 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-900 text-gray-700 dark:text-gray-300">
                             @foreach($salesOfDay as $sale)
+                                @php $estAnnulee = !is_null($sale->annule_at); @endphp
                                 @foreach($sale->products as $product)
                                     @php
                                         $qty = $product->pivot->qty ?? ($product->pivot->quantity ?? 0);
                                         $price = $product->selling_price ?? 0;
                                         $lineTotal = $qty * $price;
                                     @endphp
-                                    <tr class="hover:bg-gray-50/50 transition sale-row">
+                                    <tr class="hover:bg-gray-50/50 transition sale-row {{ $estAnnulee ? 'opacity-50' : '' }}">
                                         <td class="p-4 text-gray-500 sale-time">{{ $sale->created_at->format('H:i') }}</td>
-                                        <td class="p-4 font-bold sale-id">#{{ $sale->id }}</td>
+                                        <td class="p-4 font-bold sale-id">
+                                            #{{ $sale->id }}
+                                            @if($estAnnulee)
+                                                <span class="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                                                    Annulée
+                                                </span>
+                                            @endif
+                                        </td>
                                         <td class="p-4 sale-user">{{ $sale->user->name ?? 'N/A' }}</td>
                                         <td class="p-4 sale-product">
-                                            <span class="inline-block bg-gray-100 dark:bg-gray-900 px-2.5 py-1 rounded-md">
+                                            <span class="inline-block bg-gray-100 dark:bg-gray-900 px-2.5 py-1 rounded-md {{ $estAnnulee ? 'line-through' : '' }}">
                                                 {{ $product->name }} <span class="font-bold text-rose-500">(x{{ $qty }})</span>
                                             </span>
                                         </td>
-                                        <td class="p-4 sale-price">{{ number_format($price, 0, ',', ' ') }}</td>
-                                        <td class="p-4 font-bold text-gray-900 dark:text-white sale-total">{{ number_format($lineTotal, 0, ',', ' ') }} FCFA</td>
+                                        <td class="p-4 sale-price {{ $estAnnulee ? 'line-through' : '' }}">{{ number_format($price, 0, ',', ' ') }}</td>
+                                        <td class="p-4 font-bold text-gray-900 dark:text-white sale-total {{ $estAnnulee ? 'line-through' : '' }}">{{ number_format($lineTotal, 0, ',', ' ') }} FCFA</td>
                                         <td class="p-4 text-gray-500 sale-motif">{{ $sale->motif ?? '-' }}</td>
                                         <td class="p-4 text-right">
-                                            <!-- Bouton d'annulation de vente sécurisé -->
-                                            <form action="{{ route('sales.destroy', $sale->id) }}" method="POST" onsubmit="return confirm('Voulez-vous vraiment annuler cette vente ? Le stock sera restitué et la caisse mise à jour.');" class="inline-block">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-xs px-3 py-1.5 rounded-xl border border-rose-200 dark:bg-gray-900 dark:border-gray-800 transition shadow-sm">
-                                                    Annuler
-                                                </button>
-                                            </form>
+                                            @if($estAnnulee)
+                                                <span class="text-gray-400 dark:text-gray-600 text-xs font-medium italic">
+                                                    Annulée le {{ $sale->annule_at->format('d/m/Y à H:i') }}
+                                                </span>
+                                            @else
+                                                <!-- Bouton d'annulation de vente sécurisé -->
+                                                <form action="{{ route('sales.destroy', $sale->id) }}" method="POST" onsubmit="return confirm('Voulez-vous vraiment annuler cette vente ? Le stock sera restitué et la caisse mise à jour.');" class="inline-block">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-xs px-3 py-1.5 rounded-xl border border-rose-200 dark:bg-gray-900 dark:border-gray-800 transition shadow-sm">
+                                                        Annuler
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach

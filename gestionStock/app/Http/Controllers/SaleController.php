@@ -22,6 +22,8 @@ class SaleController extends Controller
         $boutiqueId = Auth::user()->boutique_id;
 
         // 1. La requête principale (pour la liste paginée)
+        // On affiche toutes les ventes (annulées incluses) pour garder une trace visible,
+        // mais on pourra les distinguer visuellement dans la vue grâce à annule_at.
         $query = Movement::with(['products', 'user'])
             ->where('boutique_id', $boutiqueId)
             ->where('type', 'sortie');
@@ -45,13 +47,19 @@ class SaleController extends Controller
         });
 
         // 3. CALCULS POUR LES CARTES STATISTIQUES
-        $baseVentesQuery = Movement::where('boutique_id', $boutiqueId)->where('type', 'sortie');
+        // On exclut systématiquement les ventes annulées (annule_at non nul) de tous les totaux,
+        // pour ne jamais fausser le chiffre d'affaires avec des opérations neutralisées.
+        $baseVentesQuery = Movement::where('boutique_id', $boutiqueId)
+            ->where('type', 'sortie')
+            ->whereNull('annule_at');
+
         $totalVentesCount = (clone $baseVentesQuery)->count();
 
         $totalArticlesVendus = DB::table('movement_products')
             ->join('movements', 'movement_products.movement_id', '=', 'movements.id')
             ->where('movements.boutique_id', $boutiqueId)
             ->where('movements.type', 'sortie')
+            ->whereNull('movements.annule_at')
             ->sum(DB::raw('ABS(qty)')) ?? 0;
 
         $chiffreAffairesTotal = DB::table('movement_products')
@@ -59,6 +67,7 @@ class SaleController extends Controller
             ->join('products', 'movement_products.product_id', '=', 'products.id')
             ->where('movements.boutique_id', $boutiqueId)
             ->where('movements.type', 'sortie')
+            ->whereNull('movements.annule_at')
             ->sum(DB::raw('ABS(movement_products.qty) * products.selling_price')) ?? 0;
 
         $panierMoyen = $totalVentesCount > 0 ? number_format($chiffreAffairesTotal / $totalVentesCount, 0, ',', ' ') . ' FCFA' : '0 FCFA';
@@ -68,6 +77,7 @@ class SaleController extends Controller
             ->join('products', 'movement_products.product_id', '=', 'products.id')
             ->where('movements.boutique_id', $boutiqueId)
             ->where('movements.type', 'sortie')
+            ->whereNull('movements.annule_at')
             ->select('products.name', DB::raw('SUM(ABS(movement_products.qty)) as total_qty'))
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('total_qty')
@@ -121,7 +131,7 @@ class SaleController extends Controller
                 $user = Auth::user();
                 $totalSaleAmount = 0;
 
-                // 1. Créer le mouvement global de vente
+                // 1. Créer le mouvement global de vente (valide par défaut, annule_at = null)
                 $movement = Movement::create([
                     'boutique_id' => $boutiqueId,
                     'type' => 'sortie',
@@ -190,7 +200,10 @@ class SaleController extends Controller
     }
 
     /**
-     * Annule une vente (restitue le stock, supprime l'entrée de caisse et supprime le mouvement).
+     * Annule une vente : restitue le stock, supprime l'entrée de caisse liée,
+     * et marque le mouvement comme annulé (annule_at) au lieu de le supprimer.
+     * La vente reste ainsi consultable dans l'historique, mais n'est plus comptée
+     * dans aucune statistique active.
      */
     public function destroy($id)
     {
@@ -200,7 +213,12 @@ class SaleController extends Controller
             $sale = Movement::where('boutique_id', $boutiqueId)
                 ->where('type', 'sortie')
                 ->findOrFail($id);
-            
+
+            if ($sale->annule_at) {
+                // Déjà annulée : on ne refait pas les opérations une seconde fois
+                return;
+            }
+
             // Parcourir les produits associés pour restituer le stock avec verrouillage et isolation boutique
             foreach ($sale->products as $product) {
                 $productToUpdate = Product::where('id', $product->id)
@@ -238,8 +256,8 @@ class SaleController extends Controller
                 ->where('movement_id', $sale->id)
                 ->delete();
 
-            // Supprimer le mouvement de vente global
-            $sale->delete();
+            // Marquer le mouvement comme annulé plutôt que le supprimer
+            $sale->update(['annule_at' => now()]);
         });
 
         return back()->with('success', 'Vente annulée, stock restitué et caisse mise à jour avec succès.');
@@ -249,8 +267,10 @@ class SaleController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id; 
         
+        // On exclut les ventes annulées de l'export PDF, cohérent avec les statistiques
         $sales = Movement::where('boutique_id', $boutiqueId)
             ->where('type', 'sortie')
+            ->whereNull('annule_at')
             ->with(['products', 'user'])
             ->latest()
             ->get();
@@ -273,6 +293,7 @@ class SaleController extends Controller
         
         $sales = Movement::where('boutique_id', $boutiqueId)
             ->where('type', 'sortie')
+            ->whereNull('annule_at')
             ->whereDate('created_at', $date)
             ->with(['products', 'user'])
             ->get();
