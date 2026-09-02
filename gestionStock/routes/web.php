@@ -278,11 +278,25 @@ Route::get('/debug-creer-platform-admin', function () {
 
 // verifier les user de la db
 // routes/web.php — À SUPPRIMER après debug !
-// Route::get('/debug-users', function () {
-//     return response()->json(
-//         \App\Models\User::all()->makeVisible('password')
-//     );
-// });
+Route::get('/debug-db-driver', function () {
+    $driver = \Illuminate\Support\Facades\DB::connection()->getDriverName();
+    $database = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
+
+    $tablesExist = true;
+    $usersCount = null;
+    try {
+        $usersCount = \App\Models\User::count();
+    } catch (\Exception $e) {
+        $tablesExist = false;
+    }
+
+    return [
+        'driver_actuel' => $driver,
+        'nom_base' => $database,
+        'tables_existent' => $tablesExist,
+        'nombre_utilisateurs' => $usersCount,
+    ];
+});
 
 // Route::get('/debug-login-test', function () {
 //     $user = \App\Models\User::where('code_connexion', 'SAVO-7654')->first();
