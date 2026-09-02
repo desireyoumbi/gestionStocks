@@ -30,10 +30,11 @@ class DashboardController extends Controller
             ->orderBy('quantity', 'asc')
             ->get();
 
-        // Mouvements de vente ('sortie')
+        // Mouvements de vente ('sortie') - Exclusion des ventes annulées
         $salesQuery = Movement::with('products')
             ->where('boutique_id', $boutiqueId)
-            ->where('type', 'sortie');
+            ->where('type', 'sortie')
+            ->whereNull('annule_at');
 
         $now = Carbon::now();
 
@@ -41,14 +42,14 @@ class DashboardController extends Controller
         $salesWeekCollection = (clone $salesQuery)->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])->get();
         $salesMonthCollection = (clone $salesQuery)->whereYear('created_at', $now->year)->whereMonth('created_at', $now->month)->get();
 
-        // Fonctions de calcul
+        // Fonctions de calcul basées sur le prix réel de la transaction (pivot unit_price)
         $calculateCA = function ($movements) {
             $total = 0;
             foreach ($movements as $movement) {
                 foreach ($movement->products as $product) {
                     $qty = abs($product->pivot->qty ?? 0);
-                    $sellingPrice = $product->selling_price ?? 0;
-                    $total += $qty * $sellingPrice;
+                    $unitPrice = $product->pivot->unit_price ?? $product->selling_price ?? 0;
+                    $total += $qty * $unitPrice;
                 }
             }
             return $total;
@@ -59,9 +60,9 @@ class DashboardController extends Controller
             foreach ($movements as $movement) {
                 foreach ($movement->products as $product) {
                     $qty = abs($product->pivot->qty ?? 0);
-                    $sellingPrice = $product->selling_price ?? 0;
+                    $unitPrice = $product->pivot->unit_price ?? $product->selling_price ?? 0;
                     $purchase_price = $product->purchase_price ?? 0;
-                    $grossProfit += $qty * ($sellingPrice - $purchase_price);
+                    $grossProfit += $qty * ($unitPrice - $purchase_price);
                 }
             }
             return $grossProfit;
@@ -83,7 +84,7 @@ class DashboardController extends Controller
         $netProfitWeek = $grossProfitWeek - $expensesWeek;
         $netProfitMonth = $grossProfitMonth - $expensesMonth;
 
-        // --- STATISTIQUES SUPPLÉMENTAIRES POUR LES CARTES (Panier moyen, articles vendus, produit phare) ---
+        // --- STATISTIQUES SUPPLÉMENTAIRES POUR LES CARTES ---
         $totalArticlesVendus = 0;
         foreach ($salesMonthCollection as $movement) {
             foreach ($movement->products as $product) {
@@ -95,13 +96,14 @@ class DashboardController extends Controller
         $panierMoyenVal = $totalVentesMois > 0 ? ($caMonth / $totalVentesMois) : 0;
         $panierMoyen = number_format($panierMoyenVal, 0, ',', ' ') . ' FCFA';
 
-        // --- DÉTAIL DES VENTES PAR PRODUIT (pour le mois en cours) ---
+        // --- DÉTAIL DES VENTES ET GAINS PAR PRODUIT (pour le mois en cours) ---
         $productSalesStats = [];
         foreach ($salesMonthCollection as $movement) {
             foreach ($movement->products as $product) {
                 $qty = abs($product->pivot->qty ?? 0);
-                $revenue = $qty * ($product->selling_price ?? 0);
-                $profit = $qty * (($product->selling_price ?? 0) - ($product->purchase_price ?? 0));
+                $unitPrice = $product->pivot->unit_price ?? $product->selling_price ?? 0;
+                $revenue = $qty * $unitPrice;
+                $profit = $qty * ($unitPrice - ($product->purchase_price ?? 0));
 
                 if (!isset($productSalesStats[$product->id])) {
                     $productSalesStats[$product->id] = [
@@ -128,7 +130,7 @@ class DashboardController extends Controller
         $bestProductObj = $topProductWeek ? Product::find($topProductWeek) : null;
         $produitPhare = $bestProductObj ? $bestProductObj->name : 'Aucun';
 
-        // --- RÉCUPÉRATION DE LA DERNIÈRE ACTIVITÉ (Sécurisé par boutique) ---
+        // --- RÉCUPÉRATION DE LA DERNIÈRE ACTIVITÉ ---
         $latestActivity = Movement::where('boutique_id', $boutiqueId)
             ->with('products')
             ->latest()
@@ -192,12 +194,13 @@ class DashboardController extends Controller
             ->join('products', 'movement_products.product_id', '=', 'products.id')
             ->where('movements.boutique_id', $boutiqueId)
             ->where('movements.type', 'sortie')
+            ->whereNull('movements.annule_at')
             ->whereYear('movements.created_at', date('Y'))
             ->select(
                 DB::raw("{$monthExpr} as month"),
                 DB::raw("{$yearExpr} as year"),
-                DB::raw('SUM(ABS(movement_products.qty) * products.selling_price) as total_revenue'),
-                DB::raw('SUM(ABS(movement_products.qty) * (products.selling_price - products.purchase_price)) as total_profit')
+                DB::raw('SUM(ABS(movement_products.qty) * movement_products.unit_price) as total_revenue'),
+                DB::raw('SUM(ABS(movement_products.qty) * (movement_products.unit_price - products.purchase_price)) as total_profit')
             )
             ->groupBy('year', 'month')
             ->orderBy('month', 'DESC')

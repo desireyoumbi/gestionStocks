@@ -47,14 +47,14 @@
         </div>
     </div>
 
-    <!-- 1. CARTES DE SYNTHÈSE DE CAISSE & STOCK (5 colonnes) -->
+    <!-- 1. CARTES DE SYNTHÈSE GLOBALES (Trésorerie, Stock, Dépenses, CA, Bénéfice) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <!-- Fonds Initial (Opening) -->
         <div class="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
             <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3 text-sm font-bold">🏛️</div>
             <div>
                 <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Fonds Initial / Capital</p>
-                <h3 class="text-lg font-black text-slate-900 mt-1">{{ number_format($initialFund, 0, ',', ' ') }} FCFA</h3>
+                <h3 class="text-base sm:text-lg font-black text-slate-900 mt-1">{{ number_format($initialFund, 0, ',', ' ') }} FCFA</h3>
             </div>
         </div>
 
@@ -63,44 +63,47 @@
             <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 text-sm font-bold">💵</div>
             <div>
                 <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Solde Réel en Caisse</p>
-                <h3 class="text-lg font-black {{ $currentCashBalance >= 0 ? 'text-emerald-600' : 'text-rose-600' }} mt-1">
+                <h3 class="text-base sm:text-lg font-black {{ $currentCashBalance >= 0 ? 'text-emerald-600' : 'text-rose-600' }} mt-1">
                     {{ number_format($currentCashBalance, 0, ',', ' ') }} FCFA
                 </h3>
             </div>
         </div>
 
-        <!-- Valeur du Stock Actuel (Fonds de commerce) -->
+        <!-- Valeur du Stock Actuel -->
         <div class="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
             <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3 text-sm font-bold">📦</div>
             <div>
                 <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Valeur du Stock</p>
-                <h3 class="text-lg font-black text-purple-600 mt-1">{{ number_format($stockValue, 0, ',', ' ') }} FCFA</h3>
+                <h3 class="text-base sm:text-lg font-black text-purple-600 mt-1">{{ number_format($stockValue, 0, ',', ' ') }} FCFA</h3>
             </div>
         </div>
 
         <!-- Total Dépenses Annuelles -->
         <div class="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3 text-sm font-bold">OUT</div>
+            <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3 text-sm font-bold">📉</div>
             <div>
                 <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Dépenses (Année)</p>
-                <h3 class="text-lg font-black text-rose-600 mt-1">{{ number_format($totalYearExpenses, 0, ',', ' ') }} FCFA</h3>
+                <h3 class="text-base sm:text-lg font-black text-rose-600 mt-1">{{ number_format($totalYearExpenses, 0, ',', ' ') }} FCFA</h3>
             </div>
         </div>
 
         <!-- Chiffre d'Affaires Annuel -->
-        <div class="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 text-sm font-bold">IN</div>
+        <div class="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm flex flex-col justify-between sm:col-span-2 lg:col-span-1">
+            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 text-sm font-bold">📈</div>
             <div>
-                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Chiffre d'Affaires (Année)</p>
-                <h3 class="text-lg font-black text-blue-600 mt-1">{{ number_format($totalYearRevenue, 0, ',', ' ') }} FCFA</h3>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">CA Annuel</p>
+                <h3 class="text-base sm:text-lg font-black text-blue-600 mt-1">{{ number_format($totalYearRevenue, 0, ',', ' ') }} FCFA</h3>
             </div>
         </div>
     </div>
 
-    <!-- Cartes récapitulatives de performance -->
+    <!-- 2. CARTES DE PERFORMANCE GLOBALE (Mise en avant CA & Bénéfice Net) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-2xl shadow-slate-300/50 flex flex-col justify-between">
-            <div class="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center mb-4 text-blue-600 shadow-sm">📈</div>
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm font-bold">📈</div>
+                <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">Performance</span>
+            </div>
             <div>
                 <p class="text-2xl font-black text-slate-900">{{ number_format($totalYearRevenue, 0, ',', ' ') }} FCFA</p>
                 <p class="text-xs font-semibold text-slate-400 mt-0.5">Chiffre d'affaires total de l'année</p>
@@ -108,7 +111,10 @@
         </div>
 
         <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-2xl shadow-slate-300/50 flex flex-col justify-between">
-            <div class="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4 text-emerald-600 shadow-sm">💰</div>
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm font-bold">💰</div>
+                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Bénéfice</span>
+            </div>
             <div>
                 <p class="text-2xl font-black {{ $totalYearProfit >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
                     {{ number_format($totalYearProfit, 0, ',', ' ') }} FCFA
@@ -118,7 +124,7 @@
         </div>
     </div>
 
-    <!-- Tableau détaillé des mois -->
+    <!-- 3. TABLEAU DÉTAILLÉ DES MOIS -->
     <div class="bg-white border border-slate-200/80 rounded-3xl p-8 shadow-2xl shadow-slate-300/50 space-y-6">
         <div class="flex items-center justify-between">
             <div>
@@ -171,7 +177,7 @@
 
 </div>
 
-<!-- Modal pour Définir / Ajuster le Fonds Initial -->
+<!-- MODAL : Gérer / Ajuster le Fonds Initial -->
 <div id="modal-adjust-fund" class="{{ $errors->has('amount') ? '' : 'hidden' }} bg-slate-900/50 fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl">
         <div class="flex justify-between items-center">
@@ -185,7 +191,6 @@
                 <label class="block text-xs font-bold text-slate-700 mb-1">Montant (FCFA)</label>
                 <input type="number" name="amount" required step="any" value="{{ old('amount') }}" placeholder="Ex: 500000" class="w-full rounded-xl border {{ $errors->has('amount') ? 'border-rose-500' : 'border-slate-200' }} px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500">
                 
-                <!-- Message d'erreur de validation pour le montant -->
                 @error('amount')
                     <p class="mt-1 text-xs text-rose-500 font-semibold flex items-center gap-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>

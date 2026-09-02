@@ -304,12 +304,12 @@
                 <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">Semaine</span>
             </div>
 
-            @if(isset($bestProduct))
+            @if(isset($produitPhare) && $produitPhare !== 'Aucun')
                 <div class="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-bold text-sm shadow-md">🔥</div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-xs font-black text-slate-900 truncate">{{ $bestProduct->name }}</p>
-                        <p class="text-[11px] text-slate-500 mt-0.5">Prix : {{ number_format($bestProduct->selling_price, 0, ',', ' ') }} FCFA</p>
+                        <p class="text-xs font-black text-slate-900 truncate">{{ $produitPhare }}</p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Produit le plus vendu</p>
                     </div>
                 </div>
             @else
