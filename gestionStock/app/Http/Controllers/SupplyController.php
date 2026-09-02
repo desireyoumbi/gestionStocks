@@ -373,13 +373,14 @@ class SupplyController extends Controller
                 ]);
             }
 
-            if ($supply->purchase_order_id) {
-                $purchaseOrder = PurchaseOrder::find($supply->purchase_order_id);
-                if ($purchaseOrder) {
-                    $purchaseOrder->products()->detach();
-                    $purchaseOrder->delete();
-                }
-            }
+            // ON NE SUPPRIME PLUS LE PURCHASE ORDER ICI POUR GARDER LE NOM DU FOURNISSEUR !
+            // if ($supply->purchase_order_id) {
+            //     $purchaseOrder = PurchaseOrder::find($supply->purchase_order_id);
+            //     if ($purchaseOrder) {
+            //         $purchaseOrder->products()->detach();
+            //         $purchaseOrder->delete();
+            //     }
+            // }
 
             CashMovement::where('boutique_id', $boutiqueId)
                 ->where('movement_id', $supply->id)

@@ -112,6 +112,23 @@ class PurchaseOrderController extends Controller
         });
     }
 
+
+    /**
+     * Affiche les détails d'un approvisionnement spécifique.
+     */
+    public function show($id)
+    {
+        $boutiqueId = Auth::user()->boutique_id;
+
+        // Récupère le mouvement d'entrée avec son fournisseur, l'utilisateur et les produits associés
+        $supply = Movement::with(['products', 'user', 'purchaseOrder.supplier'])
+            ->where('type', 'entree')
+            ->where('boutique_id', $boutiqueId)
+            ->findOrFail($id);
+
+        return view('supplies.show', compact('supply'));
+    }
+
     /**
      * Valide une commande fournisseur : génère le mouvement d'entrée, met à jour les stocks
      * (quantité + statut), trace l'opération dans l'historique, synchronise le prix d'achat,

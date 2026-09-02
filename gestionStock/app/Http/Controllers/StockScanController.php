@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Movement;
 use App\Models\StockMovement;
 use App\Models\CashMovement;
+use App\Models\PurchaseOrder; // ⚠️ AJOUT OBLIGATOIRE POUR LE FOURNISSEUR
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -82,7 +83,7 @@ class StockScanController extends Controller
                     $oldStock = $product->quantity;
                     $newStock = $oldStock - $quantity;
                     
-                    // Utilisation du prix négocié transmis par le formulaire (avec repli de sécurité sur le prix de base)
+                    // Utilisation du prix négocié transmis par le formulaire
                     $negotiatedPrice = $request->input('selling_price', $product->selling_price);
                     $totalSaleAmount = $quantity * $negotiatedPrice;
 
@@ -99,7 +100,6 @@ class StockScanController extends Controller
                         'user_id'     => $userId,
                     ]);
 
-                    // MODIFICATION APPORTÉE ICI : Enregistrement du prix unitaire et de la quantité dans la table pivot
                     $movement->products()->attach($product->id, [
                         'qty' => $quantity,
                         'unit_price' => $negotiatedPrice
@@ -130,7 +130,7 @@ class StockScanController extends Controller
                     $message = 'Vente et encaissement enregistrés avec succès : ' . $quantity . 'x ' . $product->name . ' (' . number_format($negotiatedPrice, 0, ',', ' ') . ' FCFA /u)';
 
                 } elseif ($request->action_type === 'supply') {
-                    // Double vérification de sécurité : s'assurer que le fournisseur choisi livre bien ce produit
+                    
                     $supplierId = $request->supplier_id;
                     $isAuthorized = $product->suppliers->contains('id', $supplierId);
 
@@ -140,22 +140,42 @@ class StockScanController extends Controller
 
                     $oldStock = $product->quantity;
                     $newStock = $oldStock + $quantity;
-                    $totalCost = $quantity * $product->purchase_price;
+                    $unitPrice = $product->purchase_price; // Récupération du prix d'achat
+                    $totalCost = $quantity * $unitPrice;
+
+                    // 1. CRÉATION DE LA COMMANDE D'ACHAT (Pour garder le lien avec le fournisseur)
+                    $purchaseOrder = PurchaseOrder::create([
+                        'supplier_id' => $supplierId,
+                        'boutique_id' => $boutiqueId,
+                        'user_id'     => $userId,
+                        'status'      => 'recue',
+                    ]);
+
+                    $purchaseOrder->products()->attach($product->id, [
+                        'qty' => $quantity,
+                        'unit_price' => $unitPrice,
+                    ]);
 
                     $product->update([
                         'quantity' => $newStock,
                         'status' => 'disponible'
                     ]);
 
+                    // 2. CRÉATION DU MOUVEMENT AVEC LE purchase_order_id (La clé du problème !)
                     $movement = Movement::create([
                         'boutique_id' => $boutiqueId,
                         'type'        => 'entree', 
                         'date'        => Carbon::now(),
                         'motif'       => 'Approvisionnement rapide par scan',
                         'user_id'     => $userId,
+                        'purchase_order_id' => $purchaseOrder->id, // LIEN ÉTABLI ICI
                     ]);
 
-                    $movement->products()->attach($product->id, ['qty' => $quantity]);
+                    // 3. ATTACHEMENT DU PRODUIT AVEC SON PRIX D'ACHAT POUR LE DASHBOARD
+                    $movement->products()->attach($product->id, [
+                        'qty' => $quantity,
+                        'unit_price' => $unitPrice
+                    ]);
 
                     StockMovement::create([
                         'boutique_id' => $boutiqueId,

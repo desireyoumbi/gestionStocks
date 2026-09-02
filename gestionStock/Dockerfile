@@ -14,8 +14,9 @@ FROM php:8.3-cli-alpine
 RUN apk add --no-cache \
     libpng-dev libjpeg-turbo-dev freetype-dev \
     libzip-dev mariadb-dev sqlite-dev oniguruma-dev icu-dev \
+    postgresql-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) pdo pdo_mysql pdo_sqlite mysqli mbstring zip exif pcntl bcmath gd intl
+    && docker-php-ext-install -j$(nproc) pdo pdo_mysql pdo_pgsql pdo_sqlite mysqli mbstring zip exif pcntl bcmath gd intl
 
 WORKDIR /var/www/html
 COPY --from=vendor /app .
