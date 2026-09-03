@@ -126,7 +126,7 @@ class PurchaseOrderController extends Controller
             ->where('boutique_id', $boutiqueId)
             ->findOrFail($id);
 
-        return view('supplies.show', compact('supply'));
+        return view('purchase_orders.show', compact('supply'));
     }
 
     /**
