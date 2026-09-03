@@ -421,7 +421,6 @@
 
 
                 <!-- Annuler -->
-                <!-- IMPORTANT : la route cancel accepte POST -->
                 <form method="POST"
                       action="{{ route(
                           'purchase_orders.cancel',
@@ -444,37 +443,6 @@
                     </button>
 
                 </form>
-
-
-                <!-- Supprimer -->
-                @if(Auth::user()->role === 'administrateur')
-
-                    <form method="POST"
-                          action="{{ route(
-                              'purchase_orders.destroy',
-                              $purchaseOrder
-                          ) }}"
-                          onsubmit="return confirm(
-                              'Supprimer définitivement cette commande ?'
-                          );"
-                          class="ml-auto">
-
-                        @csrf
-
-                        @method('DELETE')
-
-                        <button type="submit"
-                                class="text-red-400
-                                       hover:text-red-600
-                                       text-sm font-medium">
-
-                            Supprimer
-
-                        </button>
-
-                    </form>
-
-                @endif
 
             </div>
 

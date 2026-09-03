@@ -535,49 +535,49 @@ public function update(Request $request, PurchaseOrder $purchaseOrder)
         });
     }
 
-    public function destroy(PurchaseOrder $purchaseOrder)
-    {
-        if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
-            abort(404, "Élément introuvable.");
-        }
+    // public function destroy(PurchaseOrder $purchaseOrder)
+    // {
+    //     if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
+    //         abort(404, "Élément introuvable.");
+    //     }
 
-        if (Auth::user()->role !== 'administrateur') {
-            abort(403, "Action non autorisée.");
-        }
+    //     if (Auth::user()->role !== 'administrateur') {
+    //         abort(403, "Action non autorisée.");
+    //     }
 
-        /*
-         * Une commande déjà reçue ne peut pas être supprimée.
-         */
-        if ($purchaseOrder->status === 'recue') {
+    //     /*
+    //      * Une commande déjà reçue ne peut pas être supprimée.
+    //      */
+    //     if ($purchaseOrder->status === 'recue') {
 
-            return redirect()
-                ->back()
-                ->with(
-                    'error',
-                    'Impossible de supprimer une commande déjà reçue et validée.'
-                );
-        }
+    //         return redirect()
+    //             ->back()
+    //             ->with(
+    //                 'error',
+    //                 'Impossible de supprimer une commande déjà reçue et validée.'
+    //             );
+    //     }
 
-        return DB::transaction(function () use ($purchaseOrder) {
+    //     return DB::transaction(function () use ($purchaseOrder) {
 
-            /*
-             * Suppression des lignes de commande.
-             */
-            $purchaseOrder->products()->detach();
+    //         /*
+    //          * Suppression des lignes de commande.
+    //          */
+    //         $purchaseOrder->products()->detach();
 
-            /*
-             * Suppression de la commande.
-             */
-            $purchaseOrder->delete();
+    //         /*
+    //          * Suppression de la commande.
+    //          */
+    //         $purchaseOrder->delete();
 
-            return redirect()
-                ->route('purchase_orders.index')
-                ->with(
-                    'success',
-                    'Commande supprimée avec succès.'
-                );
-        });
-    }
+    //         return redirect()
+    //             ->route('purchase_orders.index')
+    //             ->with(
+    //                 'success',
+    //                 'Commande supprimée avec succès.'
+    //             );
+    //     });
+    // }
 
     public function cancel(PurchaseOrder $purchaseOrder)
 {
