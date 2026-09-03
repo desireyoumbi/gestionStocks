@@ -245,6 +245,78 @@ class PurchaseOrderController extends Controller
     ));
 }
 
+
+
+public function update(Request $request, PurchaseOrder $purchaseOrder)
+{
+    if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
+        abort(404, "Commande introuvable.");
+    }
+
+    if (Auth::user()->role === 'vendeur') {
+        abort(403, "Vous n'êtes pas autorisé à modifier cette commande.");
+    }
+
+    if ($purchaseOrder->status !== 'en_attente') {
+        return redirect()
+            ->route('purchase_orders.show', $purchaseOrder)
+            ->with('error', 'Seules les commandes en attente peuvent être modifiées.');
+    }
+
+    $validated = $request->validate([
+        'supplier_id' => [
+            'required',
+            Rule::exists('suppliers', 'id')
+                ->where('boutique_id', Auth::user()->boutique_id),
+        ],
+
+        'products' => 'required|array|min:1',
+
+        'products.*.id' => [
+            'required',
+            Rule::exists('products', 'id')
+                ->where('boutique_id', Auth::user()->boutique_id),
+        ],
+
+        'products.*.qty' => [
+            'required',
+            'integer',
+            'min:1',
+            'max:2147483647',
+        ],
+
+        'products.*.unit_price' => [
+            'required',
+            'numeric',
+            'min:0',
+            'max:999999999999999999.99',
+        ],
+    ]);
+
+    DB::transaction(function () use ($validated, $purchaseOrder) {
+
+        $purchaseOrder->update([
+            'supplier_id' => $validated['supplier_id'],
+            'updated_by' => Auth::id(),
+        ]);
+
+        // On supprime les anciennes lignes de la commande
+        $purchaseOrder->products()->detach();
+
+        // On recrée les lignes avec les nouvelles valeurs
+        foreach ($validated['products'] as $line) {
+            $purchaseOrder->products()->attach($line['id'], [
+                'qty' => $line['qty'],
+                'unit_price' => $line['unit_price'],
+            ]);
+        }
+    });
+
+    return redirect()
+        ->route('purchase_orders.show', $purchaseOrder)
+        ->with('success', 'Commande modifiée avec succès.');
+}
+
     /**
      * Valide une commande fournisseur :
      *
