@@ -20,15 +20,24 @@ class PurchaseOrderController extends Controller
         $status = $request->input('status');
 
         $query = PurchaseOrder::where('boutique_id', Auth::user()->boutique_id)
-            ->with(['supplier', 'user']);
+            ->with([
+                'supplier',
+                'user'
+            ]);
 
         if ($status && in_array($status, ['en_attente', 'recue', 'annulee'])) {
             $query->where('status', $status);
         }
 
-        $purchaseOrders = $query->latest()->paginate(10)->appends(['status' => $status]);
+        $purchaseOrders = $query
+            ->latest()
+            ->paginate(10)
+            ->appends(['status' => $status]);
 
-        return view('purchase_orders.index', compact('purchaseOrders', 'status'));
+        return view('purchase_orders.index', compact(
+            'purchaseOrders',
+            'status'
+        ));
     }
 
     public function create()
@@ -37,10 +46,20 @@ class PurchaseOrderController extends Controller
             abort(403, "Vous n'êtes pas autorisé à créer cet élément.");
         }
 
-        $suppliers = Supplier::where('boutique_id', Auth::user()->boutique_id)->get();
-        $products = Product::where('boutique_id', Auth::user()->boutique_id)->get();
+        $suppliers = Supplier::where(
+            'boutique_id',
+            Auth::user()->boutique_id
+        )->get();
 
-        return view('purchase_orders.create', compact('suppliers', 'products'));
+        $products = Product::where(
+            'boutique_id',
+            Auth::user()->boutique_id
+        )->get();
+
+        return view('purchase_orders.create', compact(
+            'suppliers',
+            'products'
+        ));
     }
 
     public function store(Request $request)
@@ -49,27 +68,50 @@ class PurchaseOrderController extends Controller
             abort(403, "Vous n'êtes pas autorisé à effectuer cette action.");
         }
 
-        // Sécurisation stricte des règles et des limites anti-débordement
         $validated = $request->validate([
             'supplier_id' => [
                 'required',
-                Rule::exists('suppliers', 'id')->where('boutique_id', Auth::user()->boutique_id),
+                Rule::exists('suppliers', 'id')
+                    ->where('boutique_id', Auth::user()->boutique_id),
             ],
+
             'products' => 'required|array|min:1',
+
             'products.*.id' => [
                 'required',
-                Rule::exists('products', 'id')->where('boutique_id', Auth::user()->boutique_id),
+                Rule::exists('products', 'id')
+                    ->where('boutique_id', Auth::user()->boutique_id),
             ],
-            'products.*.qty' => 'required|integer|min:1|max:2147483647',
-            'products.*.unit_price' => 'required|numeric|min:0|max:999999999999999999.99',
+
+            'products.*.qty' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:2147483647',
+            ],
+
+            'products.*.unit_price' => [
+                'required',
+                'numeric',
+                'min:0',
+                'max:999999999999999999.99',
+            ],
         ], [
-            'supplier_id.exists' => 'Le fournisseur sélectionné est invalide.',
-            'products.*.id.exists' => 'Un ou plusieurs produits sélectionnés sont invalides.',
-            'products.*.qty.max' => 'La quantité d\'un produit est trop élevée.',
-            'products.*.unit_price.max' => 'Le prix unitaire d\'un produit est trop élevé.',
+            'supplier_id.exists' =>
+                'Le fournisseur sélectionné est invalide.',
+
+            'products.*.id.exists' =>
+                'Un ou plusieurs produits sélectionnés sont invalides.',
+
+            'products.*.qty.max' =>
+                'La quantité d\'un produit est trop élevée.',
+
+            'products.*.unit_price.max' =>
+                'Le prix unitaire d\'un produit est trop élevé.',
         ]);
 
         DB::transaction(function () use ($validated) {
+
             $boutiqueId = Auth::user()->boutique_id;
 
             $purchaseOrder = PurchaseOrder::create([
@@ -80,14 +122,306 @@ class PurchaseOrderController extends Controller
             ]);
 
             foreach ($validated['products'] as $line) {
-                $purchaseOrder->products()->attach($line['id'], [
-                    'qty' => $line['qty'],
-                    'unit_price' => $line['unit_price'],
-                ]);
+
+                $purchaseOrder->products()->attach(
+                    $line['id'],
+                    [
+                        'qty' => $line['qty'],
+                        'unit_price' => $line['unit_price'],
+                    ]
+                );
             }
         });
 
-        return redirect()->route('purchase_orders.index')->with('success', 'Commande d\'achat enregistrée avec succès.');
+        return redirect()
+            ->route('purchase_orders.index')
+            ->with(
+                'success',
+                'Commande d\'achat enregistrée avec succès.'
+            );
+    }
+
+    /**
+     * Affiche les détails d'une commande fournisseur.
+     *
+     * Une commande peut être :
+     * - en_attente : commande future
+     * - recue      : commande réceptionnée
+     * - annulee    : commande annulée
+     *
+     * Lorsqu'elle est reçue, le mouvement d'entrée
+     * associé à cette commande est également récupéré.
+     */
+    public function show($id)
+    {
+        $boutiqueId = Auth::user()->boutique_id;
+
+        /*
+         * On récupère toujours le PurchaseOrder.
+         *
+         * Le bouton "Voir détail" de index.blade.php
+         * envoie l'identifiant de la commande fournisseur.
+         */
+        $purchaseOrder = PurchaseOrder::with([
+            'supplier',
+            'user',
+            'products',
+            'updatedBy',
+        ])
+        ->where('boutique_id', $boutiqueId)
+        ->findOrFail($id);
+
+        /*
+         * Par défaut, aucune réception n'est associée.
+         */
+        $supply = null;
+
+        /*
+         * Si la commande a été reçue,
+         * on récupère le mouvement d'entrée créé
+         * lors de la validation de la commande.
+         */
+        if ($purchaseOrder->status === 'recue') {
+
+            $supply = Movement::with([
+                'products',
+                'user',
+            ])
+            ->where('boutique_id', $boutiqueId)
+            ->where(
+                'purchase_order_id',
+                $purchaseOrder->id
+            )
+            ->where('type', 'entree')
+            ->latest()
+            ->first();
+        }
+
+        return view(
+            'purchase_orders.show',
+            compact(
+                'purchaseOrder',
+                'supply'
+            )
+        );
+    }
+
+    /**
+     * Valide une commande fournisseur :
+     *
+     * - crée le mouvement d'entrée
+     * - met à jour le stock
+     * - met à jour le prix d'achat
+     * - crée l'historique du stock
+     * - crée la sortie de caisse
+     * - passe la commande à "recue"
+     */
+    public function receive(PurchaseOrder $purchaseOrder)
+    {
+        if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
+            abort(404, "Commande introuvable.");
+        }
+
+        if (Auth::user()->role === 'vendeur') {
+            abort(
+                403,
+                "Vous n'êtes pas autorisé à valider cette commande."
+            );
+        }
+
+        return DB::transaction(function () use ($purchaseOrder) {
+
+            /*
+             * Verrouillage de la commande afin d'éviter
+             * deux validations simultanées.
+             */
+            $lockedOrder = PurchaseOrder::where(
+                'id',
+                $purchaseOrder->id
+            )
+            ->lockForUpdate()
+            ->first();
+
+            if (!$lockedOrder) {
+                return redirect()
+                    ->back()
+                    ->with(
+                        'error',
+                        'Commande introuvable.'
+                    );
+            }
+
+            /*
+             * Une commande déjà reçue ou annulée
+             * ne peut plus être validée.
+             */
+            if ($lockedOrder->status !== 'en_attente') {
+
+                return redirect()
+                    ->back()
+                    ->with(
+                        'error',
+                        'Cette commande a déjà été traitée.'
+                    );
+            }
+
+            /*
+             * Chargement des produits liés à la commande.
+             */
+            $lockedOrder->load('products');
+
+            /*
+             * Création du mouvement d'entrée.
+             *
+             * IMPORTANT :
+             * purchase_order_id permet de retrouver
+             * cette réception depuis la commande.
+             */
+            $movement = Movement::create([
+                'boutique_id' => $lockedOrder->boutique_id,
+                'purchase_order_id' => $lockedOrder->id,
+                'type' => 'entree',
+                'date' => now(),
+                'motif' =>
+                    'Validation commande fournisseur #' .
+                    $lockedOrder->id,
+                'user_id' => Auth::id(),
+            ]);
+
+            $totalAmount = 0;
+
+            /*
+             * Traitement de chaque produit.
+             */
+            foreach ($lockedOrder->products as $product) {
+
+                $qty = $product->pivot->qty;
+
+                $unitPrice = $product->pivot->unit_price ?? 0;
+
+                /*
+                 * Association du produit au mouvement.
+                 */
+                $movement->products()->attach(
+                    $product->id,
+                    [
+                        'qty' => $qty,
+                    ]
+                );
+
+                /*
+                 * Verrouillage du produit pour éviter
+                 * les problèmes de concurrence sur le stock.
+                 */
+                $productToUpdate = Product::where(
+                    'id',
+                    $product->id
+                )
+                ->lockForUpdate()
+                ->first();
+
+                if ($productToUpdate) {
+
+                    $oldStock = $productToUpdate->quantity;
+
+                    $newStock = $oldStock + $qty;
+
+                    /*
+                     * Mise à jour du produit.
+                     */
+                    $productToUpdate->update([
+                        'quantity' => $newStock,
+
+                        'status' =>
+                            $newStock > 0
+                                ? 'disponible'
+                                : 'rupture',
+
+                        'purchase_price' => $unitPrice,
+                    ]);
+
+                    /*
+                     * Historique global du stock.
+                     */
+                    StockMovement::create([
+                        'boutique_id' =>
+                            $lockedOrder->boutique_id,
+
+                        'product_id' =>
+                            $productToUpdate->id,
+
+                        'user_id' =>
+                            Auth::id(),
+
+                        'type' => 'entry',
+
+                        'quantity' => $qty,
+
+                        'old_stock' => $oldStock,
+
+                        'new_stock' => $newStock,
+
+                        'reason' =>
+                            'Réception commande fournisseur #' .
+                            $lockedOrder->id,
+                    ]);
+
+                    /*
+                     * Calcul du montant total de la commande.
+                     */
+                    $totalAmount +=
+                        $qty * $unitPrice;
+                }
+            }
+
+            /*
+             * Enregistrement de la sortie de caisse.
+             */
+            if ($totalAmount > 0) {
+
+                CashMovement::create([
+                    'boutique_id' =>
+                        $lockedOrder->boutique_id,
+
+                    'movement_id' =>
+                        $movement->id,
+
+                    'user_id' =>
+                        Auth::id(),
+
+                    'type' => 'out',
+
+                    'category' => 'restock',
+
+                    'amount' =>
+                        $totalAmount,
+
+                    'motif' =>
+                        'Réception commande fournisseur #' .
+                        $lockedOrder->id,
+
+                    'is_unjustified' => false,
+                ]);
+            }
+
+            /*
+             * La commande devient reçue.
+             *
+             * updated_by permet de savoir
+             * qui a effectué la réception.
+             */
+            $lockedOrder->update([
+                'status' => 'recue',
+                'updated_by' => Auth::id(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with(
+                    'success',
+                    'Commande validée avec succès : le stock a été mis à jour et le mouvement d\'entrée a été généré.'
+                );
+        });
     }
 
     public function destroy(PurchaseOrder $purchaseOrder)
@@ -100,135 +434,37 @@ class PurchaseOrderController extends Controller
             abort(403, "Action non autorisée.");
         }
 
+        /*
+         * Une commande déjà reçue ne peut pas être supprimée.
+         */
         if ($purchaseOrder->status === 'recue') {
-            return redirect()->back()->with('error', 'Impossible de supprimer une commande déjà reçue et validée.');
+
+            return redirect()
+                ->back()
+                ->with(
+                    'error',
+                    'Impossible de supprimer une commande déjà reçue et validée.'
+                );
         }
 
         return DB::transaction(function () use ($purchaseOrder) {
+
+            /*
+             * Suppression des lignes de commande.
+             */
             $purchaseOrder->products()->detach();
+
+            /*
+             * Suppression de la commande.
+             */
             $purchaseOrder->delete();
 
-            return redirect()->route('purchase_orders.index')->with('success', 'Commande supprimée avec succès.');
-        });
-    }
-
-
-    /**
-     * Affiche les détails d'un approvisionnement spécifique.
-     */
-    public function show($id)
-    {
-        $boutiqueId = Auth::user()->boutique_id;
-
-        // Récupère le mouvement d'entrée avec son fournisseur, l'utilisateur et les produits associés
-        $supply = Movement::with(['products', 'user', 'purchaseOrder.supplier'])
-            ->where('type', 'entree')
-            ->where('boutique_id', $boutiqueId)
-            ->findOrFail($id);
-
-        return view('purchase_orders.show', compact('supply'));
-    }
-
-    /**
-     * Valide une commande fournisseur : génère le mouvement d'entrée, met à jour les stocks
-     * (quantité + statut), trace l'opération dans l'historique, synchronise le prix d'achat,
-     * et enregistre la sortie de caisse correspondante.
-     */
-    public function receive(PurchaseOrder $purchaseOrder)
-    {
-        if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
-            abort(404, "Commande introuvable.");
-        }
-
-        if (Auth::user()->role === 'vendeur') {
-            abort(403, "Vous n'êtes pas autorisé à valider cette commande.");
-        }
-
-        // Utilisation d'un verrouillage de ligne pour éviter les doubles validations simultanées
-        return DB::transaction(function () use ($purchaseOrder) {
-            $lockedOrder = PurchaseOrder::where('id', $purchaseOrder->id)->lockForUpdate()->first();
-
-            if ($lockedOrder->status !== 'en_attente') {
-                return redirect()->back()->with('error', 'Cette commande a déjà été traitée.');
-            }
-
-            // Charger les produits liés via la table pivot
-            $lockedOrder->load('products');
-
-            // Étape A : Créer le mouvement de stock d'entrée avec l'ID de la commande
-            $movement = Movement::create([
-                'boutique_id'       => $lockedOrder->boutique_id,
-                'purchase_order_id' => $lockedOrder->id,
-                'type'              => 'entree',
-                'date'              => now(),
-                'motif'             => 'Validation commande fournisseur #' . $lockedOrder->id,
-                'user_id'           => Auth::id(),
-            ]);
-
-            $totalAmount = 0;
-
-            // Étape B : Parcourir les produits de la commande pour alimenter le mouvement et le stock
-            foreach ($lockedOrder->products as $product) {
-                $qty = $product->pivot->qty;
-                $unitPrice = $product->pivot->unit_price ?? 0;
-
-                // Associer le produit au mouvement dans la table pivot des mouvements
-                $movement->products()->attach($product->id, [
-                    'qty' => $qty,
-                ]);
-
-                // Étape C : Mettre à jour le stock réel du produit avec verrouillage pour la concurrence
-                $productToUpdate = Product::where('id', $product->id)->lockForUpdate()->first();
-
-                if ($productToUpdate) {
-                    $oldStock = $productToUpdate->quantity;
-                    $newStock = $oldStock + $qty;
-
-                    // Quantité, statut recalculé, et prix d'achat synchronisé avec ce qui a été payé
-                    $productToUpdate->update([
-                        'quantity' => $newStock,
-                        'status' => $newStock > 0 ? 'disponible' : 'rupture',
-                        'purchase_price' => $unitPrice,
-                    ]);
-
-                    // Traçabilité dans l'historique global des stocks, comme pour tout autre type d'entrée
-                    StockMovement::create([
-                        'boutique_id' => $lockedOrder->boutique_id,
-                        'product_id'  => $productToUpdate->id,
-                        'user_id'     => Auth::id(),
-                        'type'        => 'entry',
-                        'quantity'    => $qty,
-                        'old_stock'   => $oldStock,
-                        'new_stock'   => $newStock,
-                        'reason'      => 'Réception commande fournisseur #' . $lockedOrder->id,
-                    ]);
-
-                    $totalAmount += $qty * $unitPrice;
-                }
-            }
-
-            // Étape D : Enregistrer la sortie de caisse correspondant à cet achat,
-            // liée au mouvement via movement_id pour rester cohérent avec SupplyController.
-            if ($totalAmount > 0) {
-                CashMovement::create([
-                    'boutique_id' => $lockedOrder->boutique_id,
-                    'movement_id' => $movement->id,
-                    'user_id'     => Auth::id(),
-                    'type'        => 'out',
-                    'category'    => 'restock',
-                    'amount'      => $totalAmount,
-                    'motif'       => 'Réception commande fournisseur #' . $lockedOrder->id,
-                    'is_unjustified' => false,
-                ]);
-            }
-
-            // Étape E : Mettre à jour le statut de la commande
-            $lockedOrder->update([
-                'status'     => 'recue',
-                'updated_by' => Auth::id(),
-            ]);
-
-            return redirect()->back()->with('success', 'Commande validée avec succès : le stock a été mis à jour et le mouvement d\'entrée a été généré.');
+            return redirect()
+                ->route('purchase_orders.index')
+                ->with(
+                    'success',
+                    'Commande supprimée avec succès.'
+                );
         });
     }
 }
