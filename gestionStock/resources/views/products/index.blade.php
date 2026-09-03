@@ -48,7 +48,7 @@
         <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
             <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 1.343 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08.402-2.599 1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             </div>
             <div>
@@ -142,31 +142,49 @@
                         <th class="px-6 py-4 text-right">Actions</th>
                     </tr>
                 </thead>
+
                 <tbody class="divide-y divide-gray-100 text-xs">
                     @forelse($products as $product)
                     <tr class="hover:bg-gray-50/50 transition">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center gap-3">
+
                                 @if($product->image)
-                                    <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" 
+
+                                    @php
+                                        $imageUrl = 'https://xgvcyiaflsawvfmjuoxx.supabase.co/storage/v1/object/public/products/' . $product->image;
+                                    @endphp
+
+                                    <img src="{{ $imageUrl }}"
+                                         alt="{{ $product->name }}" 
                                          class="w-10 h-10 rounded-xl object-cover border border-gray-100 shadow-sm cursor-pointer hover:opacity-80 transition transform hover:scale-105"
-                                         onclick="openImageModal('{{ asset('storage/' . $product->image) }}', '{{ addslashes($product->name) }}')">
+                                         onclick="openImageModal('{{ $imageUrl }}', '{{ addslashes($product->name) }}')">
+
                                 @else
+
                                     <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-[10px] font-bold border border-gray-200">
                                         IMG
                                     </div>
+
                                 @endif
+
                                 <div>
                                     <div class="font-bold text-gray-900">{{ $product->name }}</div>
                                     <div class="text-[10px] text-gray-400">{{ $product->reference ?? 'Aucune référence' }}</div>
                                 </div>
                             </div>
                         </td>
+
                         <td class="px-6 py-4 text-gray-500">{{ $product->category->name ?? '-' }}</td>
-                        <td class="px-6 py-4 font-semibold text-gray-900">{{ number_format($product->selling_price, 0, ',', ' ') }} FCFA</td>
+
+                        <td class="px-6 py-4 font-semibold text-gray-900">
+                            {{ number_format($product->selling_price, 0, ',', ' ') }} FCFA
+                        </td>
                         
                         @if(Auth::user()->isManager())
-                            <td class="px-6 py-4 text-gray-500">{{ number_format($product->purchase_price, 0, ',', ' ') }} FCFA</td>
+                            <td class="px-6 py-4 text-gray-500">
+                                {{ number_format($product->purchase_price, 0, ',', ' ') }} FCFA
+                            </td>
                         @endif
                         
                         <td class="px-6 py-4">
@@ -177,6 +195,7 @@
                         
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2">
+
                                 {{-- Bouton QR Code sécurisé avec attribut data pour éviter les bugs de rendu --}}
                                 <button type="button" 
                                         data-name="{{ $product->name }}"
@@ -186,7 +205,7 @@
                                         class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl transition inline-flex items-center justify-center" 
                                         title="Afficher le QR Code">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 001 1v2a1 1 0 01-1 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5v2a1 1 0 001 1z" />
                                     </svg>
                                 </button>
 
@@ -200,7 +219,9 @@
                                 
                                 @if(Auth::user()->isAdmin())
                                     <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Supprimer ce produit ?');">
-                                        @csrf @method('DELETE')
+                                        @csrf
+                                        @method('DELETE')
+
                                         <button type="submit" class="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition" title="Supprimer">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -208,10 +229,13 @@
                                         </button>
                                     </form>
                                 @endif
+
                             </div>
                         </td>
                     </tr>
+
                     @empty
+
                     <tr>
                         <td colspan="6" class="px-6 py-12 text-center">
                             <div class="flex flex-col items-center justify-center space-y-3">
@@ -224,6 +248,7 @@
                             </div>
                         </td>
                     </tr>
+
                     @endforelse
                 </tbody>
             </table>
@@ -235,26 +260,31 @@
 {{-- Modale Image --}}
 <div id="imageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden" onclick="closeImageModal()">
     <div class="relative max-w-2xl mx-4 p-3 bg-white rounded-3xl shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
+
         <button onclick="closeImageModal()" class="absolute top-4 right-4 z-10 bg-gray-900/60 hover:bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold transition">
             &times;
         </button>
+
         <img id="modalImage" src="" alt="" class="w-full max-h-[75vh] object-contain rounded-2xl">
+
         <div class="p-4 text-center">
             <h3 id="modalTitle" class="text-sm font-bold text-gray-900"></h3>
         </div>
+
     </div>
 </div>
 
 {{-- Modale QR Code --}}
 <div id="qrModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden" onclick="closeQrModal()">
-    <!-- id="qrPrintArea" avec centrage mathématique pour l'impression -->
+
     <div id="qrPrintArea" class="relative max-w-sm w-full mx-4 p-6 bg-white rounded-3xl shadow-2xl flex flex-col items-center text-center" onclick="event.stopPropagation()">
-        <!-- Bouton croix masqué à l'impression avec class print:hidden -->
+
         <button onclick="closeQrModal()" class="absolute top-4 right-4 z-10 bg-gray-100 hover:bg-gray-200 text-gray-700 w-8 h-8 rounded-full flex items-center justify-center font-bold transition print:hidden">
             &times;
         </button>
         
         <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">QR Code Produit</h3>
+
         <h2 id="qrProductName" class="text-base font-black text-gray-900 mb-4"></h2>
 
         <div id="qrCodeContainer" class="p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-4 flex items-center justify-center [&>svg]:w-36 [&>svg]:h-36">
@@ -263,22 +293,25 @@
 
         <span id="qrProductRef" class="text-xs font-mono bg-gray-100 px-3 py-1.5 rounded-xl text-gray-600 font-bold mb-4"></span>
 
-        <!-- Bouton imprimer masqué à l'impression avec class print:hidden -->
         <button onclick="printQrCode()" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-2.5 rounded-xl transition text-xs shadow-md print:hidden">
             Imprimer l'étiquette
         </button>
+
     </div>
 </div>
 
-{{-- Style CSS dédié à l'impression (isolation + centrage de l'étiquette) --}}
+{{-- Style CSS dédié à l'impression --}}
 <style>
 @media print {
     body * {
         visibility: hidden;
     }
-    #qrPrintArea, #qrPrintArea * {
+
+    #qrPrintArea,
+    #qrPrintArea * {
         visibility: visible;
     }
+
     #qrPrintArea {
         position: fixed;
         left: 50%;
@@ -326,4 +359,5 @@
         window.print();
     }
 </script>
+
 @endsection
