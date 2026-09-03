@@ -206,6 +206,45 @@ class PurchaseOrderController extends Controller
         );
     }
 
+
+    public function edit(PurchaseOrder $purchaseOrder)
+{
+    // Vérifier que la commande appartient à la boutique
+    if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
+        abort(404, "Commande introuvable.");
+    }
+
+    // Les vendeurs ne peuvent pas modifier une commande
+    if (Auth::user()->role === 'vendeur') {
+        abort(403, "Vous n'êtes pas autorisé à modifier cette commande.");
+    }
+
+    // Une commande reçue ou annulée ne peut plus être modifiée
+    if ($purchaseOrder->status !== 'en_attente') {
+        return redirect()
+            ->route('purchase_orders.show', $purchaseOrder)
+            ->with('error', 'Seules les commandes en attente peuvent être modifiées.');
+    }
+
+    $purchaseOrder->load('products', 'supplier');
+
+    $suppliers = Supplier::where(
+        'boutique_id',
+        Auth::user()->boutique_id
+    )->get();
+
+    $products = Product::where(
+        'boutique_id',
+        Auth::user()->boutique_id
+    )->get();
+
+    return view('purchase_orders.edit', compact(
+        'purchaseOrder',
+        'suppliers',
+        'products'
+    ));
+}
+
     /**
      * Valide une commande fournisseur :
      *
