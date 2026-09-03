@@ -72,20 +72,21 @@ class ProductController extends Controller
             'status' => $status,
         ]);
 
-        // SÉCURITÉ : Si l'utilisateur n'est ni admin ni vice-admin, on cache le prix d'achat
+        // SÉCURITÉ : Si l'utilisateur n'est ni admin ni vice-admin,
+        // on cache le prix d'achat
         if (!in_array(Auth::user()->role, ['administrateur', 'vice_administrateur'])) {
             $products->getCollection()->each->makeHidden(['purchase_price']);
         }
 
         return view('products.index', compact(
-            'products', 
-            'search', 
-            'categories', 
-            'categoryId', 
-            'status', 
-            'totalProducts', 
-            'stockValue', 
-            'lowStockCount', 
+            'products',
+            'search',
+            'categories',
+            'categoryId',
+            'status',
+            'totalProducts',
+            'stockValue',
+            'lowStockCount',
             'outOfStockCount'
         ));
     }
@@ -99,7 +100,10 @@ class ProductController extends Controller
             abort(403, "Vous n'êtes pas autorisé à accéder à cette page.");
         }
 
-        $categories = Category::where('boutique_id', Auth::user()->boutique_id)->get();
+        $categories = Category::where(
+            'boutique_id',
+            Auth::user()->boutique_id
+        )->get();
 
         return view('products.create', compact('categories'));
     }
@@ -113,64 +117,113 @@ class ProductController extends Controller
             abort(403, "Vous n'êtes pas autorisé à effectuer cette action.");
         }
 
-        // Validation avec prix d'achat > 0 et seuil d'alerte >= 5
+        // Validation
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+
             'reference' => [
                 'nullable',
                 'string',
                 'max:100',
                 Rule::unique('products')->where(function ($query) {
-                    return $query->where('boutique_id', Auth::user()->boutique_id);
+                    return $query->where(
+                        'boutique_id',
+                        Auth::user()->boutique_id
+                    );
                 }),
             ],
-            'purchase_price' => 'required|numeric|min:0.01|max:999999999999999999.99', // Interdit 0 ou négatif
-            'selling_price' => 'required|numeric|min:0|max:999999999999999999.99|gte:purchase_price',
-            'quantity' => 'required|integer|min:0|max:2147483647',
-            'alert_threshold' => 'required|integer|min:5|max:2147483647', // Ne peut pas être inférieur à 5
+
+            'purchase_price' =>
+                'required|numeric|min:0.01|max:999999999999999999.99',
+
+            'selling_price' =>
+                'required|numeric|min:0|max:999999999999999999.99|gte:purchase_price',
+
+            'quantity' =>
+                'required|integer|min:0|max:2147483647',
+
+            'alert_threshold' =>
+                'required|integer|min:5|max:2147483647',
+
             'category_id' => [
                 'required',
-                Rule::exists('categories', 'id')->where('boutique_id', Auth::user()->boutique_id),
+                Rule::exists('categories', 'id')->where(
+                    'boutique_id',
+                    Auth::user()->boutique_id
+                ),
             ],
-            'description' => 'nullable|string|max:1000',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-        ],[
-            'reference.unique' => 'Cette référence existe déjà pour cette boutique.',
-            'purchase_price.min' => 'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
-            'selling_price.gte' => 'Le prix de vente ne peut pas être inférieur au prix d\'achat.',
-            'alert_threshold.min' => 'Le seuil d\'alerte ne peut pas être inférieur à 5.',
-            'image.image' => 'Le fichier doit être une image.',
-            'image.max' => 'L\'image ne doit pas dépasser 2 Mo.',
+
+            'description' =>
+                'nullable|string|max:1000',
+
+            'image' =>
+                'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'reference.unique' =>
+                'Cette référence existe déjà pour cette boutique.',
+
+            'purchase_price.min' =>
+                'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
+
+            'selling_price.gte' =>
+                'Le prix de vente ne peut pas être inférieur au prix d\'achat.',
+
+            'alert_threshold.min' =>
+                'Le seuil d\'alerte ne peut pas être inférieur à 5.',
+
+            'image.image' =>
+                'Le fichier doit être une image.',
+
+            'image.max' =>
+                'L\'image ne doit pas dépasser 2 Mo.',
         ]);
 
         return DB::transaction(function () use ($request, $validated) {
+
             $boutiqueId = Auth::user()->boutique_id;
 
             if (!empty($validated['reference'])) {
+
                 $exists = Product::where('boutique_id', $boutiqueId)
                     ->where('reference', $validated['reference'])
                     ->lockForUpdate()
                     ->exists();
 
                 if ($exists) {
-                    return back()->withInput()->withErrors(['reference' => 'Un produit avec cette référence vient d\'être créé par un autre utilisateur.']);
+                    return back()
+                        ->withInput()
+                        ->withErrors([
+                            'reference' =>
+                                'Un produit avec cette référence vient d\'être créé par un autre utilisateur.'
+                        ]);
                 }
             }
 
+            /*
+             * ============================================================
+             * IMAGE → SUPABASE STORAGE
+             * ============================================================
+             */
             if ($request->hasFile('image')) {
-                $validated['image'] = $request->file('image')->store('products', 'public');
+
+                $validated['image'] = $request
+                    ->file('image')
+                    ->store('products', 's3');
             }
 
             $initialQuantity = (int) $validated['quantity'];
 
-            // Le statut est TOUJOURS déduit automatiquement de la quantité, jamais choisi manuellement
-            $validated['status'] = $initialQuantity > 0 ? 'disponible' : 'rupture';
+            // Le statut est toujours déduit automatiquement de la quantité
+            $validated['status'] =
+                $initialQuantity > 0 ? 'disponible' : 'rupture';
+
             $validated['boutique_id'] = $boutiqueId;
             $validated['user_id'] = Auth::id();
 
             $product = Product::create($validated);
 
             if ($initialQuantity > 0) {
+
                 StockMovement::create([
                     'boutique_id' => $product->boutique_id,
                     'product_id'  => $product->id,
@@ -183,7 +236,9 @@ class ProductController extends Controller
                 ]);
             }
 
-            return redirect()->route('products.index')->with('success', 'Produit créé avec succès.');
+            return redirect()
+                ->route('products.index')
+                ->with('success', 'Produit créé avec succès.');
         });
     }
 
@@ -212,16 +267,16 @@ class ProductController extends Controller
             abort(403, "Action non autorisée.");
         }
 
-        $categories = Category::where('boutique_id', Auth::user()->boutique_id)->get();
+        $categories = Category::where(
+            'boutique_id',
+            Auth::user()->boutique_id
+        )->get();
 
         return view('products.edit', compact('product', 'categories'));
     }
 
     /**
      * Met à jour les informations du produit.
-     * Le statut n'est plus un champ modifiable manuellement : il est recalculé
-     * automatiquement à partir de la quantité, pour éviter toute incohérence
-     * (ex: quantité à 0 mais statut resté "disponible").
      */
     public function update(Request $request, Product $product)
     {
@@ -235,48 +290,93 @@ class ProductController extends Controller
 
         $rules = [
             'name' => 'required|string|max:255',
+
             'reference' => [
                 'nullable',
                 'string',
                 'max:100',
                 Rule::unique('products')->where(function ($query) use ($product) {
-                    return $query->where('boutique_id', $product->boutique_id);
+                    return $query->where(
+                        'boutique_id',
+                        $product->boutique_id
+                    );
                 })->ignore($product->id),
             ],
-            'selling_price' => 'required|numeric|min:0|max:999999999999999999.99',
-            'quantity' => 'required|integer|min:0|max:2147483647',
-            'alert_threshold' => 'required|integer|min:5|max:2147483647', // Modifiable mais minimum 5
+
+            'selling_price' =>
+                'required|numeric|min:0|max:999999999999999999.99',
+
+            'quantity' =>
+                'required|integer|min:0|max:2147483647',
+
+            'alert_threshold' =>
+                'required|integer|min:5|max:2147483647',
+
             'category_id' => [
                 'required',
-                Rule::exists('categories', 'id')->where('boutique_id', Auth::user()->boutique_id),
+                Rule::exists('categories', 'id')->where(
+                    'boutique_id',
+                    Auth::user()->boutique_id
+                ),
             ],
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+
+            'image' =>
+                'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ];
 
-        if (in_array(Auth::user()->role, ['administrateur', 'vice_administrateur'])) {
-            $rules['purchase_price'] = 'required|numeric|min:0.01|max:999999999999999999.99'; // Interdit 0 lors de la maj admin
+        if (in_array(
+            Auth::user()->role,
+            ['administrateur', 'vice_administrateur']
+        )) {
+
+            $rules['purchase_price'] =
+                'required|numeric|min:0.01|max:999999999999999999.99';
         }
 
         $validated = $request->validate($rules, [
-            'purchase_price.min' => 'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
-            'alert_threshold.min' => 'Le seuil d\'alerte ne peut pas être inférieur à 5.',
+            'purchase_price.min' =>
+                'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
+
+            'alert_threshold.min' =>
+                'Le seuil d\'alerte ne peut pas être inférieur à 5.',
         ]);
 
         if (Auth::user()->role === 'vendeur') {
             unset($validated['purchase_price']);
         }
 
-        // Le statut est recalculé automatiquement à partir de la nouvelle quantité,
-        // jamais choisi manuellement — élimine tout risque d'incohérence.
+        // Recalcul automatique du statut
         $newStockPreview = (int) $validated['quantity'];
-        $validated['status'] = $newStockPreview > 0 ? 'disponible' : 'rupture';
 
-        return DB::transaction(function () use ($request, $product, $validated) {
+        $validated['status'] =
+            $newStockPreview > 0 ? 'disponible' : 'rupture';
+
+        return DB::transaction(function () use (
+            $request,
+            $product,
+            $validated
+        ) {
+
+            /*
+             * ============================================================
+             * NOUVELLE IMAGE → SUPABASE STORAGE
+             * ============================================================
+             */
             if ($request->hasFile('image')) {
-                if ($product->image && Storage::disk('public')->exists($product->image)) {
-                    Storage::disk('public')->delete($product->image);
+
+                // Supprimer l'ancienne image de Supabase
+                if (
+                    $product->image &&
+                    Storage::disk('s3')->exists($product->image)
+                ) {
+
+                    Storage::disk('s3')->delete($product->image);
                 }
-                $validated['image'] = $request->file('image')->store('products', 'public');
+
+                // Envoyer la nouvelle image dans Supabase
+                $validated['image'] = $request
+                    ->file('image')
+                    ->store('products', 's3');
             }
 
             $validated['updated_by'] = Auth::id();
@@ -286,21 +386,27 @@ class ProductController extends Controller
             $difference = $newStock - $oldStock;
 
             if ($difference !== 0) {
+
                 StockMovement::create([
                     'boutique_id' => $product->boutique_id,
                     'product_id'  => $product->id,
                     'user_id'     => Auth::id(),
-                    'type'        => $difference > 0 ? 'entry' : 'adjustment',
+                    'type'        => $difference > 0
+                        ? 'entry'
+                        : 'adjustment',
                     'quantity'    => abs($difference),
                     'old_stock'   => $oldStock,
                     'new_stock'   => $newStock,
-                    'reason'      => 'Modification manuelle depuis la modification du produit',
+                    'reason'      =>
+                        'Modification manuelle depuis la modification du produit',
                 ]);
             }
 
             $product->update($validated);
 
-            return redirect()->route('products.index')->with('success', 'Produit mis à jour avec succès.');
+            return redirect()
+                ->route('products.index')
+                ->with('success', 'Produit mis à jour avec succès.');
         });
     }
 
@@ -310,20 +416,34 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         if (Auth::user()->role !== 'administrateur') {
-            abort(403, "Vous n'avez pas l'autorisation de supprimer ce produit.");
+            abort(
+                403,
+                "Vous n'avez pas l'autorisation de supprimer ce produit."
+            );
         }
 
         if ($product->boutique_id !== Auth::user()->boutique_id) {
             abort(404);
         }
 
-        if ($product->image && Storage::disk('public')->exists($product->image)) {
-            Storage::disk('public')->delete($product->image);
+        /*
+         * ============================================================
+         * SUPPRESSION IMAGE → SUPABASE STORAGE
+         * ============================================================
+         */
+        if (
+            $product->image &&
+            Storage::disk('s3')->exists($product->image)
+        ) {
+
+            Storage::disk('s3')->delete($product->image);
         }
 
         $product->delete();
-        
-        return redirect()->route('products.index')->with('success', 'Produit supprimé avec succès.');
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', 'Produit supprimé avec succès.');
     }
 
     /**
@@ -332,10 +452,21 @@ class ProductController extends Controller
     public function exportPdf()
     {
         $boutiqueId = Auth::user()->boutique_id;
-        $products = Product::where('boutique_id', $boutiqueId)->with('category')->get();
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('products.pdf', compact('products'));
+        $products = Product::where(
+            'boutique_id',
+            $boutiqueId
+        )
+            ->with('category')
+            ->get();
 
-        return $pdf->download('inventaire-produits-' . date('Y-m-d') . '.pdf');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'products.pdf',
+            compact('products')
+        );
+
+        return $pdf->download(
+            'inventaire-produits-' . date('Y-m-d') . '.pdf'
+        );
     }
 }

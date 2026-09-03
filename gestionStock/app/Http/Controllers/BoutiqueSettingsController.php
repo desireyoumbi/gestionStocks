@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage; // <-- N'oublie pas d'importer Storage
+use Illuminate\Support\Facades\Storage;
 
 class BoutiqueSettingsController extends Controller
 {
@@ -16,14 +16,20 @@ class BoutiqueSettingsController extends Controller
     public function index()
     {
         $user = Auth::user();
+
         if ($user->role !== 'administrateur') {
-            return redirect()->route('dashboard')->with('error', 'Accès refusé.');
+            return redirect()
+                ->route('dashboard')
+                ->with('error', 'Accès refusé.');
         }
 
         $boutique = Boutique::findOrFail($user->boutique_id);
         $staff = User::where('boutique_id', $boutique->id)->get();
-        
-        return view('settings.boutique', compact('boutique', 'staff'));
+
+        return view(
+            'settings.boutique',
+            compact('boutique', 'staff')
+        );
     }
 
     // Mise à jour des infos générales, du logo et de la couleur
@@ -31,102 +37,185 @@ class BoutiqueSettingsController extends Controller
     {
         $request->validate([
             'nom' => 'required|string|max:255',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048', // Validation de l'image
-            'primary_color' => 'nullable|string|max:7', // Validation de la couleur (ex: #f59e0b)
+
+            'logo' =>
+                'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
+
+            'primary_color' =>
+                'nullable|string|max:7',
         ]);
 
         /** @var \App\Models\Boutique $boutique */
-        $boutique = Boutique::findOrFail(Auth::user()->boutique_id);
-        
+        $boutique = Boutique::findOrFail(
+            Auth::user()->boutique_id
+        );
+
         // Données de base à mettre à jour
         $data = [
             'nom' => $request->nom,
             'primary_color' => $request->primary_color,
         ];
 
-        // Gestion de l'upload du logo
+        /*
+         * ============================================================
+         * GESTION DU LOGO → SUPABASE STORAGE
+         * ============================================================
+         */
         if ($request->hasFile('logo')) {
-            // Supprimer l'ancien logo s'il existe
-            if ($boutique->logo && Storage::disk('public')->exists($boutique->logo)) {
-                Storage::disk('public')->delete($boutique->logo);
+
+            // Supprimer l'ancien logo de Supabase
+            if (
+                $boutique->logo &&
+                Storage::disk('s3')->exists($boutique->logo)
+            ) {
+                Storage::disk('s3')->delete($boutique->logo);
             }
 
-            // Enregistrer le nouveau logo dans storage/app/public/logos
-            $path = $request->file('logo')->store('logos', 'public');
+            // Enregistrer le nouveau logo dans Supabase
+            $path = $request
+                ->file('logo')
+                ->store('logos', 's3');
+
             $data['logo'] = $path;
         }
 
         $boutique->update($data);
 
-        return back()->with('success', 'Paramètres de la boutique mis à jour avec succès.');
+        return back()->with(
+            'success',
+            'Paramètres de la boutique mis à jour avec succès.'
+        );
     }
 
     // Suppression définitive de la boutique
     public function destroy(Request $request)
     {
         $user = Auth::user();
-        $boutique = Boutique::findOrFail($user->boutique_id);
-        
-        if ($request->confirm_text !== 'SUPPRIMER_MA_BOUTIQUE') {
-            return back()->with('error', 'Veuillez taper le texte de confirmation exact.');
+
+        $boutique = Boutique::findOrFail(
+            $user->boutique_id
+        );
+
+        if (
+            $request->confirm_text !==
+            'SUPPRIMER_MA_BOUTIQUE'
+        ) {
+            return back()->with(
+                'error',
+                'Veuillez taper le texte de confirmation exact.'
+            );
         }
 
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);
 
-        User::where('boutique_id', $boutique->id)->delete();
+        /*
+         * ============================================================
+         * SUPPRESSION DU LOGO DE SUPABASE
+         * ============================================================
+         *
+         * Avant de supprimer la boutique de la base de données,
+         * on supprime également son logo dans Supabase Storage.
+         */
+        if (
+            $boutique->logo &&
+            Storage::disk('s3')->exists($boutique->logo)
+        ) {
+            Storage::disk('s3')->delete($boutique->logo);
+        }
+
+        User::where(
+            'boutique_id',
+            $boutique->id
+        )->delete();
+
         $boutique->delete();
 
         Auth::logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('register')->with('success', 'La boutique et tous les comptes associés ont été supprimés définitivement.');
+        return redirect()
+            ->route('register')
+            ->with(
+                'success',
+                'La boutique et tous les comptes associés ont été supprimés définitivement.'
+            );
     }
 
-    // À ajouter dans BoutiqueSettingsController.php, avant la fermeture de la classe
+    /**
+     * Transfère les droits d'administrateur principal
+     * à un autre membre du staff.
+     *
+     * L'ancien administrateur devient vice_administrateur.
+     * Le membre choisi devient administrateur.
+     */
+    public function transferOwnership(Request $request)
+    {
+        /** @var \App\Models\User $currentUser */
+        $currentUser = Auth::user();
 
-/**
- * Transfère les droits d'administrateur principal à un autre membre du staff.
- * L'ancien administrateur devient vice_administrateur, le membre choisi devient administrateur.
- */
-public function transferOwnership(Request $request)
-{
-    /** @var \App\Models\User $currentUser */
-    $currentUser = Auth::user();
+        if ($currentUser->role !== 'administrateur') {
+            abort(
+                403,
+                "Seul l'administrateur peut transférer la propriété de la boutique."
+            );
+        }
 
-    if ($currentUser->role !== 'administrateur') {
-        abort(403, "Seul l'administrateur peut transférer la propriété de la boutique.");
+        $request->validate([
+            'new_admin_id' =>
+                'required|exists:users,id',
+
+            'password' =>
+                ['required', 'current_password'],
+        ]);
+
+        $nouveauAdmin = User::findOrFail(
+            $request->new_admin_id
+        );
+
+        // Sécurité : le nouvel admin doit appartenir à la même boutique
+        if (
+            $nouveauAdmin->boutique_id !==
+            $currentUser->boutique_id
+        ) {
+            abort(
+                404,
+                "Utilisateur introuvable."
+            );
+        }
+
+        if (
+            $nouveauAdmin->id ===
+            $currentUser->id
+        ) {
+            return back()->with(
+                'error',
+                "Vous ne pouvez pas vous transférer la propriété à vous-même."
+            );
+        }
+
+        DB::transaction(function () use (
+            $currentUser,
+            $nouveauAdmin
+        ) {
+
+            // L'ancien administrateur devient vice_administrateur
+            $currentUser->role = 'vice_administrateur';
+            $currentUser->save();
+
+            // Le membre choisi devient le nouvel administrateur
+            $nouveauAdmin->role = 'administrateur';
+            $nouveauAdmin->save();
+        });
+
+        return redirect()
+            ->route('dashboard')
+            ->with(
+                'success',
+                "La propriété de la boutique a été transférée à {$nouveauAdmin->name}. Vous êtes maintenant Vice-Administrateur."
+            );
     }
-
-    $request->validate([
-        'new_admin_id' => 'required|exists:users,id',
-        'password' => ['required', 'current_password'],
-    ]);
-
-    $nouveauAdmin = User::findOrFail($request->new_admin_id);
-
-    // Sécurité : le nouvel admin doit appartenir à la même boutique
-    if ($nouveauAdmin->boutique_id !== $currentUser->boutique_id) {
-        abort(404, "Utilisateur introuvable.");
-    }
-
-    if ($nouveauAdmin->id === $currentUser->id) {
-        return back()->with('error', "Vous ne pouvez pas vous transférer la propriété à vous-même.");
-    }
-
-    DB::transaction(function () use ($currentUser, $nouveauAdmin) {
-        // L'ancien administrateur devient vice_administrateur
-        $currentUser->role = 'vice_administrateur';
-        $currentUser->save();
-
-        // Le membre choisi devient le nouvel administrateur
-        $nouveauAdmin->role = 'administrateur';
-        $nouveauAdmin->save();
-    });
-
-    return redirect()->route('dashboard')
-        ->with('success', "La propriété de la boutique a été transférée à {$nouveauAdmin->name}. Vous êtes maintenant Vice-Administrateur.");
-}
 }
