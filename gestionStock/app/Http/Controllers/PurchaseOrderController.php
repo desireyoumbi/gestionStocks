@@ -467,4 +467,34 @@ class PurchaseOrderController extends Controller
                 );
         });
     }
+
+    public function cancel(PurchaseOrder $purchaseOrder)
+{
+    // Vérifier que la commande appartient à la boutique de l'utilisateur
+    if ($purchaseOrder->boutique_id !== Auth::user()->boutique_id) {
+        abort(404, "Commande introuvable.");
+    }
+
+    // Les vendeurs ne peuvent pas annuler une commande
+    if (Auth::user()->role === 'vendeur') {
+        abort(403, "Vous n'êtes pas autorisé à annuler cette commande.");
+    }
+
+    // Seules les commandes en attente peuvent être annulées
+    if ($purchaseOrder->status !== 'en_attente') {
+        return redirect()->back()->with(
+            'error',
+            'Seules les commandes en attente peuvent être annulées.'
+        );
+    }
+
+    $purchaseOrder->update([
+        'status' => 'annulee',
+        'updated_by' => Auth::id(),
+    ]);
+
+    return redirect()
+        ->route('purchase_orders.index')
+        ->with('success', 'Commande annulée avec succès.');
+}
 }
