@@ -75,15 +75,49 @@ class PurchaseOrderController extends Controller
             'boutique_id',
             Auth::user()->boutique_id
         )
-        ->with([
-            'products'
-        ])
+        ->with('products')
         ->get();
+
+
+        /*
+         * Préparation des données destinées au JavaScript.
+         *
+         * On prépare les données ici plutôt que de faire
+         * plusieurs map() directement dans @json() du Blade.
+         *
+         * Cela évite les erreurs de compilation Blade/PHP.
+         */
+        $supplierData = $suppliers->map(function ($supplier) {
+
+            return [
+                'id' => $supplier->id,
+                'name' => $supplier->name,
+
+                'products' => $supplier->products
+                    ->map(function ($product) {
+
+                        return [
+                            'id' => $product->id,
+                            'name' => $product->name,
+                            'purchase_price' =>
+                                $product->purchase_price,
+                        ];
+
+                    })
+                    ->values()
+                    ->toArray(),
+            ];
+
+        })
+        ->values()
+        ->toArray();
+
 
         return view(
             'purchase_orders.create',
             compact(
-                'suppliers'
+                'suppliers',
+                'supplierData'
             )
         );
     }
@@ -216,16 +250,13 @@ class PurchaseOrderController extends Controller
 
         /*
          * Vérification des produits.
-         *
-         * Même si quelqu'un modifie le HTML ou le JavaScript,
-         * il ne pourra pas commander un produit qui n'appartient
-         * pas à ce fournisseur.
          */
         $selectedProductIds = [];
 
         foreach ($validated['products'] as $line) {
 
             $productId = (int) $line['id'];
+
 
             /*
              * Vérification fournisseur -> produit.
@@ -244,8 +275,7 @@ class PurchaseOrderController extends Controller
 
 
             /*
-             * Empêcher le même produit d'apparaître
-             * plusieurs fois dans la commande.
+             * Empêcher le même produit plusieurs fois.
              */
             if (in_array(
                 $productId,
@@ -272,7 +302,8 @@ class PurchaseOrderController extends Controller
         ) {
 
             $purchaseOrder = PurchaseOrder::create([
-                'boutique_id' => $boutiqueId,
+                'boutique_id' =>
+                    $boutiqueId,
 
                 'supplier_id' =>
                     $validated['supplier_id'],
@@ -286,7 +317,10 @@ class PurchaseOrderController extends Controller
 
 
             /*
-             * Ajout des produits à la commande.
+             * Ajout des produits.
+             *
+             * Le unit_price est le prix saisi
+             * pour CETTE commande.
              */
             foreach ($validated['products'] as $line) {
 
@@ -320,9 +354,6 @@ class PurchaseOrderController extends Controller
     {
         $boutiqueId = Auth::user()->boutique_id;
 
-        /*
-         * On récupère toujours le PurchaseOrder.
-         */
         $purchaseOrder = PurchaseOrder::with([
             'supplier',
             'user',
@@ -336,15 +367,12 @@ class PurchaseOrderController extends Controller
         ->findOrFail($id);
 
 
-        /*
-         * Par défaut aucune réception.
-         */
         $supply = null;
 
 
         /*
          * Si la commande est reçue,
-         * on récupère le mouvement d'entrée associé.
+         * récupération du mouvement associé.
          */
         if ($purchaseOrder->status === 'recue') {
 
@@ -428,7 +456,7 @@ class PurchaseOrderController extends Controller
 
 
         /*
-         * Chargement des relations de la commande.
+         * Chargement des relations.
          */
         $purchaseOrder->load([
             'products',
@@ -437,19 +465,13 @@ class PurchaseOrderController extends Controller
 
 
         /*
-         * Chargement de tous les fournisseurs
-         * avec leurs produits.
-         *
-         * Cela permettra à edit.blade.php
-         * de filtrer les produits selon le fournisseur.
+         * Fournisseurs avec leurs produits.
          */
         $suppliers = Supplier::where(
             'boutique_id',
             Auth::user()->boutique_id
         )
-        ->with([
-            'products'
-        ])
+        ->with('products')
         ->get();
 
 
@@ -465,9 +487,6 @@ class PurchaseOrderController extends Controller
 
     /**
      * Mise à jour d'une commande fournisseur.
-     *
-     * Même sécurité que store() :
-     * le produit doit appartenir au fournisseur choisi.
      */
     public function update(
         Request $request,
@@ -520,9 +539,6 @@ class PurchaseOrderController extends Controller
         $boutiqueId = Auth::user()->boutique_id;
 
 
-        /*
-         * Validation des données.
-         */
         $validated = $request->validate([
 
             'supplier_id' => [
@@ -606,7 +622,7 @@ class PurchaseOrderController extends Controller
 
 
         /*
-         * Récupération du fournisseur avec ses produits.
+         * Fournisseur sélectionné.
          */
         $supplier = Supplier::where(
             'id',
@@ -621,7 +637,7 @@ class PurchaseOrderController extends Controller
 
 
         /*
-         * Produits autorisés pour ce fournisseur.
+         * Produits autorisés.
          */
         $allowedProductIds = $supplier->products
             ->pluck('id')
@@ -630,7 +646,8 @@ class PurchaseOrderController extends Controller
 
 
         /*
-         * Vérification des produits.
+         * Vérification fournisseur -> produit
+         * et suppression des doublons.
          */
         $selectedProductIds = [];
 
@@ -639,9 +656,6 @@ class PurchaseOrderController extends Controller
             $productId = (int) $line['id'];
 
 
-            /*
-             * Vérification fournisseur -> produit.
-             */
             if (!in_array(
                 $productId,
                 $allowedProductIds,
@@ -655,9 +669,6 @@ class PurchaseOrderController extends Controller
             }
 
 
-            /*
-             * Pas de doublon.
-             */
             if (in_array(
                 $productId,
                 $selectedProductIds,
@@ -670,12 +681,13 @@ class PurchaseOrderController extends Controller
                 ]);
             }
 
+
             $selectedProductIds[] = $productId;
         }
 
 
         /*
-         * Mise à jour dans une transaction.
+         * Mise à jour transactionnelle.
          */
         DB::transaction(function () use (
             $validated,
@@ -698,7 +710,7 @@ class PurchaseOrderController extends Controller
 
 
             /*
-             * Création des nouvelles lignes.
+             * Ajout des nouvelles lignes.
              */
             foreach ($validated['products'] as $line) {
 
@@ -911,13 +923,18 @@ class PurchaseOrderController extends Controller
                                     ? 'disponible'
                                     : 'rupture',
 
+                            /*
+                             * Le prix réellement saisi
+                             * dans la commande devient le
+                             * nouveau prix d'achat du produit.
+                             */
                             'purchase_price' =>
                                 $unitPrice,
                         ]);
 
 
                         /*
-                         * Historique global du stock.
+                         * Historique du stock.
                          */
                         StockMovement::create([
 
@@ -949,7 +966,7 @@ class PurchaseOrderController extends Controller
 
 
                         /*
-                         * Calcul du coût total.
+                         * Calcul du montant réel payé.
                          */
                         $totalAmount +=
                             $qty * $unitPrice;
@@ -1020,7 +1037,6 @@ class PurchaseOrderController extends Controller
      * Annule une commande fournisseur.
      *
      * Une commande annulée reste dans l'historique.
-     * Elle n'est donc pas supprimée.
      */
     public function cancel(PurchaseOrder $purchaseOrder)
     {
