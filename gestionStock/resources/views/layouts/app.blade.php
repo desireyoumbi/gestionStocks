@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ Auth::user()->boutique->nom ?? 'E-Stockly' }}</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a1a3a">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -1022,6 +1026,20 @@
         });
 
     </script>
+
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('Service Worker enregistré:', registration.scope);
+        })
+        .catch((error) => {
+          console.log('Échec de l\'enregistrement du Service Worker:', error);
+        });
+    });
+  }
+</script>
 
 </body>
 </html>
