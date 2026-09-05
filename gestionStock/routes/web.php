@@ -59,6 +59,11 @@ Route::get('/', function () {
     return view('accueil.test');
 })->name('home');
 
+// confidentialite et politique
+
+Route::view('/cgu', 'terms')->name('terms');
+Route::view('/confidentialite', 'privacy')->name('privacy');
+
 // ================= fin de acceuil ==================
 
 // =========== debut des routes libre (connexion et inscription) ============
@@ -234,16 +239,6 @@ Route::post('/code-connexion-oublie/confirmer/{user}', [CodeConnexionRecoveryCon
     ->name('code-connexion.confirm-account');
 
 
-    Route::get('/debug-logs', function () {
-    $path = storage_path('logs/laravel.log');
-    if (!file_exists($path)) {
-        return "Fichier de log introuvable.";
-    }
-    $lignes = file($path);
-    $dernieresLignes = array_slice($lignes, -150);
-    return '<pre>' . htmlspecialchars(implode('', $dernieresLignes)) . '</pre>';
-});
-
 // À ajouter dans routes/web.php, dans le groupe de routes protégées par auth
 
 Route::post('/user/{user}/envoyer-identifiants-email', [UserController::class, 'envoyerIdentifiantsEmail'])
@@ -264,16 +259,16 @@ Route::middleware(['platform_admin'])->prefix('platform-admin')->name('platform-
 
 // Route TEMPORAIRE à ajouter dans routes/web.php — à SUPPRIMER immédiatement après utilisation
 
-Route::get('/debug-creer-platform-admin', function () {
-    $admin = \App\Models\PlatformAdmin::create([
-        'name' => 'Désiré Youmbi',
-        'email' => 'youmbidesire413@gmail.com',
-        'password' => 'ChangeMoiVite123!', // sera haché automatiquement par le cast 'hashed'
-        'code_connexion' => 'ADMIN-0001',
-    ]);
+// Route::get('/debug-creer-platform-admin', function () {
+//     $admin = \App\Models\PlatformAdmin::create([
+//         'name' => 'Désiré Youmbi',
+//         'email' => 'youmbidesire413@gmail.com',
+//         'password' => 'ChangeMoiVite123!', // sera haché automatiquement par le cast 'hashed'
+//         'code_connexion' => 'ADMIN-0001',
+//     ]);
 
-    return "Platform Admin créé avec succès. Code de connexion : {$admin->code_connexion} — pense à changer le mot de passe et à supprimer cette route immédiatement.";
-});
+//     return "Platform Admin créé avec succès. Code de connexion : {$admin->code_connexion} — pense à changer le mot de passe et à supprimer cette route immédiatement.";
+// });
 
 
 

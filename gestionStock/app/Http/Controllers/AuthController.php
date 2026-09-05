@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -31,12 +33,12 @@ class AuthController extends Controller
                 'nom' => $request->nom_boutique,
             ]);
 
-            $prefix = strtoupper(\Illuminate\Support\Str::slug($request->nom_boutique));
+            $prefix = strtoupper(Str::slug($request->nom_boutique));
             $prefix = substr($prefix, 0, 4);
 
             do {
                 $codeConnexion = $prefix . '-' . rand(1000, 9999);
-            } while (\App\Models\User::where('code_connexion', $codeConnexion)->exists());
+            } while (User::where('code_connexion', $codeConnexion)->exists());
 
             $user = User::create([
                 'name' => $request->name,
@@ -51,9 +53,8 @@ class AuthController extends Controller
 
             Auth::login($user);
 
-            // On stocke le code dans une session flash dédiée pour la popup
             return redirect()->route('dashboard')
-                             ->with('new_user_code', $codeConnexion);
+                ->with('new_user_code', $codeConnexion);
         });
     }
 
@@ -69,9 +70,54 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        // Sécurité : on force le code_connexion en majuscule côté backend,
-        // indépendamment de ce qu'a pu faire (ou non) le JavaScript côté formulaire.
+        // Normalisation du code de connexion
         $codeConnexion = strtoupper(trim($request->code_connexion));
+
+        /*
+        |--------------------------------------------------------------------------
+        | Rate limiting
+        |--------------------------------------------------------------------------
+        */
+
+        $ip = $request->ip();
+
+        // Clé spécifique au compte + adresse IP
+        $accountKey = 'login-account:' . Str::lower($codeConnexion) . '|' . $ip;
+
+        // Clé globale pour l'adresse IP
+        $ipKey = 'login-ip:' . $ip;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Vérification de la limite compte + IP
+        |--------------------------------------------------------------------------
+        */
+
+        if (RateLimiter::tooManyAttempts($accountKey, 5)) {
+            $seconds = RateLimiter::availableIn($accountKey);
+
+            return back()
+                ->withErrors([
+                    'code_connexion' => "Trop de tentatives. Réessayez dans {$seconds} secondes.",
+                ])
+                ->onlyInput('code_connexion');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Vérification de la limite globale par IP
+        |--------------------------------------------------------------------------
+        */
+
+        if (RateLimiter::tooManyAttempts($ipKey, 30)) {
+            $seconds = RateLimiter::availableIn($ipKey);
+
+            return back()
+                ->withErrors([
+                    'code_connexion' => "Trop de tentatives de connexion depuis cette adresse. Réessayez dans {$seconds} secondes.",
+                ])
+                ->onlyInput('code_connexion');
+        }
 
         $credentials = [
             'code_connexion' => $codeConnexion,
@@ -80,28 +126,59 @@ class AuthController extends Controller
 
         $remember = $request->boolean('remember');
 
-        // 1. On tente d'abord l'authentification en tant que Platform Admin
+        /*
+        |--------------------------------------------------------------------------
+        | 1. Connexion Platform Admin
+        |--------------------------------------------------------------------------
+        */
+
         if (Auth::guard('platform_admin')->attempt($credentials, $remember)) {
+
+            // Connexion réussie : remise à zéro des compteurs
+            RateLimiter::clear($accountKey);
+            RateLimiter::clear($ipKey);
+
             $request->session()->regenerate();
 
             return redirect()->route('platform-admin.dashboard')
-                ->with('success', 'Bienvenue, ' . Auth::guard('platform_admin')->user()->name);
+                ->with(
+                    'success',
+                    'Bienvenue, ' . Auth::guard('platform_admin')->user()->name
+                );
         }
 
-        // 2. Sinon, on tente l'authentification classique (administrateur / vice_administrateur / vendeur)
+        /*
+        |--------------------------------------------------------------------------
+        | 2. Connexion utilisateur classique
+        |--------------------------------------------------------------------------
+        */
+
         if (Auth::attempt($credentials, $remember)) {
-            $request->session()->regenerate();
 
             $user = Auth::user();
 
-            // Blocage si la boutique de cet utilisateur est suspendue
+            // Connexion réussie : remise à zéro des compteurs
+            RateLimiter::clear($accountKey);
+            RateLimiter::clear($ipKey);
+
+            $request->session()->regenerate();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Vérification de la boutique suspendue
+            |--------------------------------------------------------------------------
+            */
+
             if ($user->boutique && $user->boutique->statut === 'suspendue') {
+
                 Auth::logout();
+
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
                 return back()->withErrors([
-                    'code_connexion' => 'Ce compte est actuellement suspendu. Contactez le support : 678177749 (WhatsApp) ou youmbidesire413@gmail.com.',
+                    'code_connexion' =>
+                        'Ce compte est actuellement suspendu. Contactez le support : 678177749 (WhatsApp) ou youmbidesire413@gmail.com.',
                 ])->onlyInput('code_connexion');
             }
 
@@ -109,9 +186,22 @@ class AuthController extends Controller
                 ->with('success', 'Bonjour ' . $user->name);
         }
 
-        return back()->withErrors([
-            'code_connexion' => 'Code de connexion ou mot de passe incorrect',
-        ])->onlyInput('code_connexion');
+        /*
+        |--------------------------------------------------------------------------
+        | Échec de connexion
+        |--------------------------------------------------------------------------
+        */
+
+        // On incrémente les deux compteurs uniquement lorsque
+        // les identifiants sont incorrects.
+        RateLimiter::hit($accountKey, 60);
+        RateLimiter::hit($ipKey, 300);
+
+        return back()
+            ->withErrors([
+                'code_connexion' => 'Code de connexion ou mot de passe incorrect',
+            ])
+            ->onlyInput('code_connexion');
     }
 
     public function logout(Request $request)
@@ -122,6 +212,6 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login')
-                         ->with('success', 'À bientôt');
+            ->with('success', 'À bientôt');
     }
 }

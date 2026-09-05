@@ -714,6 +714,14 @@
             </div>
 
 
+            <!-- Liens CGU et Politique de Confidentialité -->
+            <div class="flex items-center justify-center gap-3 text-xs text-slate-500 mt-4">
+                <a href="{{ route('terms') }}" class="hover:text-indigo-600 transition">Conditions d'utilisation</a>
+                <span>·</span>
+                <a href="{{ route('privacy') }}" class="hover:text-indigo-600 transition">Politique de confidentialité</a>
+            </div>
+
+
             <!-- Lien vers la connexion -->
             <p class="text-center text-sm text-slate-600 mt-6">
 

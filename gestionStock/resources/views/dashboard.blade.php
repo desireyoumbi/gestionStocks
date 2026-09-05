@@ -23,6 +23,58 @@
     $unjustifiedCount = ($boutique && Auth::user()->role !== 'vendeur') ? \App\Models\CashMovement::where('boutique_id', $boutique->id)->where('is_unjustified', true)->count() : 0;
 @endphp
 
+<!-- ================= BLOC FIXED PREMIÈRE CONNEXION (Onboarding) ================= -->
+<div x-data="{ 
+        firstVisit: false,
+        init() {
+            // Utilisation d'une clé unique liée à l'ID utilisateur pour éviter les conflits si plusieurs comptes naviguent sur le même PC
+            const storageKey = 'e_stockly_welcome_seen_{{ Auth::id() }}';
+            if (!localStorage.getItem(storageKey)) {
+                this.firstVisit = true;
+            }
+        },
+        dismissWelcome() {
+            this.firstVisit = false;
+            const storageKey = 'e_stockly_welcome_seen_{{ Auth::id() }}';
+            localStorage.setItem(storageKey, 'true');
+        }
+    }"
+    x-show="firstVisit" 
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+    x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+    x-transition:leave-end="opacity-0 translate-y-4 scale-95"
+    class="fixed bottom-6 right-6 z-50 max-w-sm bg-slate-900 text-white p-5 rounded-3xl shadow-2xl border border-slate-700/80 flex items-start gap-4 backdrop-blur-md"
+    style="display: none;"
+>
+    <!-- Icône -->
+    <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-inner">
+        👋
+    </div>
+
+    <!-- Texte -->
+    <div class="flex-1 text-xs">
+        <h4 class="font-black text-sm text-white tracking-tight">Bienvenue sur votre espace !</h4>
+        <p class="text-slate-300 mt-1 leading-relaxed">
+            C'est votre toute première connexion sur le tableau de bord E-Stockly. Prenez un moment pour explorer vos statistiques et configurer vos premiers produits.
+        </p>
+        <div class="mt-3.5 flex items-center gap-2">
+            <button @click="dismissWelcome()" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl transition shadow-lg shadow-amber-500/20">
+                J'ai compris, c'est parti !
+            </button>
+        </div>
+    </div>
+
+    <!-- Bouton Fermer (X) -->
+    <button @click="dismissWelcome()" class="text-slate-400 hover:text-white transition p-1">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+</div>
+
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
 
     <!-- COLONNE PRINCIPALE (2/3 de l'écran sur grand écran) -->
@@ -393,7 +445,7 @@
             <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 text-white shadow-2xl shadow-slate-900/40">
                 <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center mb-4 text-amber-400">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                 </div>
                 <h3 class="text-sm font-black tracking-tight mb-1">Bilans et Rapports</h3>
