@@ -261,36 +261,20 @@ Route::middleware(['platform_admin'])->prefix('platform-admin')->name('platform-
 
 // Route TEMPORAIRE à ajouter dans routes/web.php — à SUPPRIMER immédiatement après utilisation
 
-// Route::get('/debug-creer-platform-admin', function () {
-//     $admin = \App\Models\PlatformAdmin::create([
-//         'name' => 'Désiré Youmbi',
-//         'email' => 'youmbidesire413@gmail.com',
-//         'password' => 'ChangeMoiVite123!', // sera haché automatiquement par le cast 'hashed'
-//         'code_connexion' => 'ADMIN-0001',
-//     ]);
-
-//     return "Platform Admin créé avec succès. Code de connexion : {$admin->code_connexion} — pense à changer le mot de passe et à supprimer cette route immédiatement.";
-// });
-
-
-Route::get('/debug-platform-admins', function () {
-    return PlatformAdmin::select('id', 'name', 'email', 'code_connexion')->get();
-});
-
-
-Route::get('/supprimer-platform-admin', function () {
-    $admin = PlatformAdmin::find(1);
-
-    if (!$admin) {
-        return [
-            'message' => 'Aucun PlatformAdmin avec l ID 1.'
-        ];
-    }
-
-    $admin->forceDelete();
+Route::get('/debug-creer-platform-admin', function () {
+    $admin = \App\Models\PlatformAdmin::create([
+        'name' => 'Désiré Youmbi',
+        'email' => 'youmbidesire413@gmail.com',
+        'password' => 'desireAdmine-stockly!',
+        'code_connexion' => 'ADMIN-0001',
+    ]);
 
     return [
-        'message' => 'Le PlatformAdmin a été supprimé.',
-        'nombre_restant' => PlatformAdmin::count()
+        'message' => 'Platform Admin créé avec succès.',
+        'id' => $admin->id,
+        'name' => $admin->name,
+        'email' => $admin->email,
+        'code_connexion' => $admin->code_connexion,
+        'password_hashe' => !str_contains($admin->password, 'ChangeMoiVite123!'),
     ];
 });
