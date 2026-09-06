@@ -273,13 +273,24 @@ Route::middleware(['platform_admin'])->prefix('platform-admin')->name('platform-
 // });
 
 
-
-Route::get('/nombre-utilisateurs', function () {
-    return [
-        'nombre_utilisateurs' => User::count(),
-    ];
-});
-
 Route::get('/debug-platform-admins', function () {
     return PlatformAdmin::select('id', 'name', 'email', 'code_connexion')->get();
+});
+
+
+Route::get('/supprimer-platform-admin', function () {
+    $admin = PlatformAdmin::find(1);
+
+    if (!$admin) {
+        return [
+            'message' => 'Aucun PlatformAdmin avec l ID 1.'
+        ];
+    }
+
+    $admin->forceDelete();
+
+    return [
+        'message' => 'Le PlatformAdmin a été supprimé.',
+        'nombre_restant' => PlatformAdmin::count()
+    ];
 });
