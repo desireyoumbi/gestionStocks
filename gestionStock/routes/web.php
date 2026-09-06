@@ -27,6 +27,7 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Notification;
 use App\Models\StockMovement;
+use App\Models\User;
 
 /*
 |--------------------------------------------------------------------------
@@ -272,19 +273,8 @@ Route::middleware(['platform_admin'])->prefix('platform-admin')->name('platform-
 
 
 
-
-// Route::get('/debug-login-test', function () {
-//     $user = \App\Models\User::where('code_connexion', 'SAVO-7654')->first();
-
-//     if (!$user) {
-//         return "Utilisateur introuvable avec ce code_connexion.";
-//     }
-
-//     $motDePasseTeste = '12345678'; // ⚠️ remplace par le vrai mot de passe que tu saisis
-
-//     return [
-//         'user_trouve' => true,
-//         'password_hash_en_base' => $user->password,
-//         'hash_check_resultat' => \Illuminate\Support\Facades\Hash::check($motDePasseTeste, $user->password),
-//     ];
-// });
+Route::get('/nombre-utilisateurs', function () {
+    return [
+        'nombre_utilisateurs' => User::count(),
+    ];
+});
