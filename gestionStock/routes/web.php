@@ -26,6 +26,7 @@ use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Notification;
+use App\Models\PlatformAdmin;
 use App\Models\StockMovement;
 use App\Models\User;
 
@@ -277,4 +278,8 @@ Route::get('/nombre-utilisateurs', function () {
     return [
         'nombre_utilisateurs' => User::count(),
     ];
+});
+
+Route::get('/debug-platform-admins', function () {
+    return PlatformAdmin::select('id', 'name', 'email', 'code_connexion')->get();
 });
