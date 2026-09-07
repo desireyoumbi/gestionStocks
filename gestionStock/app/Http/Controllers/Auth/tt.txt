@@ -1,0 +1,11 @@
+$user = \App\Models\User::create([
+    'name' => 'Utilisateur Test',
+    'email' => 'test@local.test',
+    'password' => 'Test123456!',
+    'phone' => '690000000',
+    'statuts' => 'actifs',
+    'role' => 'vendeur',
+    'boutique_id' => 1,
+    'doit_changer_mdp' => false,
+    'code_connexion' => 'TEST-0001',
+]);

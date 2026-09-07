@@ -258,23 +258,3 @@ Route::middleware(['platform_admin'])->prefix('platform-admin')->name('platform-
     Route::get('/boutiques/{boutique}', [PlatformAdminController::class, 'show'])->name('boutiques.show');
     Route::post('/users/{user}/reinitialiser-mot-de-passe', [PlatformAdminController::class, 'reinitialiserMotDePasse'])->name('users.reinitialiser-mot-de-passe');
 });    
-
-// Route TEMPORAIRE à ajouter dans routes/web.php — à SUPPRIMER immédiatement après utilisation
-
-Route::get('/debug-creer-platform-admin', function () {
-    $admin = \App\Models\PlatformAdmin::create([
-        'name' => 'Désiré Youmbi',
-        'email' => 'youmbidesire413@gmail.com',
-        'password' => 'desireAdmine-stockly!',
-        'code_connexion' => 'ADMIN-0001',
-    ]);
-
-    return [
-        'message' => 'Platform Admin créé avec succès.',
-        'id' => $admin->id,
-        'name' => $admin->name,
-        'email' => $admin->email,
-        'code_connexion' => $admin->code_connexion,
-        'password_hashe' => !str_contains($admin->password, 'ChangeMoiVite123!'),
-    ];
-});
