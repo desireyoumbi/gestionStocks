@@ -1,6 +1,4 @@
-```json
 {
-  "id": "/",
   "name": "E-Stockly",
   "short_name": "E-Stockly",
   "description": "Gestion de stock multi-boutique",
@@ -21,4 +19,3 @@
     }
   ]
 }
-```
