@@ -24,10 +24,6 @@
     </div>
 </div>
 
-{{-- Optionnel : petit bouton permanent (à placer où tu veux, ex: dans ton menu) qui permet
-     de relancer l'installation à tout moment, même après avoir fermé la bannière --}}
-{{-- <button onclick="installPwaApp()">Installer l'application</button> --}}
-
 <script>
     (function () {
         let deferredPrompt = null;
@@ -36,30 +32,24 @@
         const confirmBtn = document.getElementById('pwa-install-confirm');
 
         const DISMISS_KEY = 'pwa_install_dismissed_until';
-        const INSTALLED_KEY = 'pwa_installed';
 
         function isDismissedRecently() {
             const until = localStorage.getItem(DISMISS_KEY);
             return until && Date.now() < parseInt(until, 10);
         }
 
-        // Vérif 1 : l'utilisateur navigue-t-il DÉJÀ depuis l'app installée
-        // (fenêtre lancée depuis l'icône, sans barre d'adresse) ?
+        // Vérification EN DIRECT uniquement — pas de drapeau permanent,
+        // qui resterait bloqué à tort après une désinstallation.
         function isRunningAsInstalledApp() {
             return window.matchMedia('(display-mode: standalone)').matches
                 || window.navigator.standalone === true; // iOS Safari
-        }
-
-        // Vérif 2 : sait-on, depuis une visite précédente, que l'app a déjà été installée ?
-        function wasInstalledPreviously() {
-            return localStorage.getItem(INSTALLED_KEY) === 'true';
         }
 
         window.addEventListener('beforeinstallprompt', function (event) {
             event.preventDefault();
             deferredPrompt = event;
 
-            if (!isRunningAsInstalledApp() && !wasInstalledPreviously() && !isDismissedRecently()) {
+            if (!isRunningAsInstalledApp() && !isDismissedRecently()) {
                 banner.classList.remove('hidden');
             }
         });
@@ -83,12 +73,9 @@
             localStorage.setItem(DISMISS_KEY, Date.now() + septJoursEnMs);
         });
 
-        // Dès que l'installation réussit, on le mémorise DURABLEMENT (pas juste pour cette session)
-        // pour ne plus jamais proposer la bannière lors des prochaines visites.
         window.addEventListener('appinstalled', function () {
             banner.classList.add('hidden');
             deferredPrompt = null;
-            localStorage.setItem(INSTALLED_KEY, 'true');
         });
 
         window.installPwaApp = triggerInstall;

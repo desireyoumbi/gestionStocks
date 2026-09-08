@@ -1,12 +1,17 @@
+```blade
 <!DOCTYPE html>
 <html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ Auth::user()->boutique->nom ?? 'E-Stockly' }}</title>
-    <link rel="manifest" href="/manifest.json">
+
+     <link rel="manifest" href="/manifest.json">
+
     <meta name="theme-color" content="#0a1a3a">
+
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -307,7 +312,7 @@
 
                                 <path stroke-linecap="round"
                                       stroke-linejoin="round"
-                                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                      d="M8 7h12m0 0l-4-4m4 4l-4 4m-4 6H4m0 0l4 4m-4-4l4-4" />
 
                             </svg>
 
@@ -425,7 +430,7 @@
 
                                     <path stroke-linecap="round"
                                           stroke-linejoin="round"
-                                          d="M11.983 2.5a1.5 1.5 0 00-1.414 1.05l-.26 1.042a8.01 8.01 0 00-1.57.906l-.976-.462a1.5 1.5 0 00-1.815.534l-1.5 2.598a1.5 1.5 0 00.27 1.834l.79.728a7.928 7.928 0 000 1.812l-.79.728a1.5 1.5 0 00-.27 1.834l1.5 2.598a1.5 1.5 0 001.815.534l.976-.462a8.01 8.01 0 001.57.906l.26 1.042a1.5 1.5 0 001.414 1.05h3.034a1.5 1.5 0 001.414-1.05l.26-1.042a8.01 8.01 0 001.57-.906l.976.462a1.5 1.5 0 001.815-.534l1.5-2.598a1.5 1.5 0 00-.27-1.834l-.79-.728a7.928 7.928 0 000-1.812l.79-.728a1.5 1.5 0 00.27-1.834l-1.5-2.598a1.5 1.5 0 00-1.815-.534l-.976.462a8.01 8.01 0 001.57.906l-.26-1.042a1.5 1.5 0 00-1.414-1.05h-3.034z" />
+                                          d="M11.983 2.5a1.5 1.5 0 00-1.414 1.05l-.26 1.042a8.01 8.01 0 00-1.57.906l-.976-.462a1.5 1.5 0 00-1.815.534l-1.5 2.598a1.5 1.5 0 00.27 1.834l.79.728a7.928 7.928 0 000 1.812l-.79.728a1.5 1.5 0 00-.27 1.834l1.5 2.598a1.5 1.5 0 001.815.534l.976-.462a8.01 8.01 0 001.57.906l.26 1.042a1.5 1.5 0 001.414 1.05h3.034a1.5 1.5 0 001.414-1.05l.26-1.042a8.01 8.01 0 001.57-.906l.976.462a1.5 1.5 0 001.815-.534l1.5-2.598a1.5 1.5 0 00-.27-1.834l-.79-.728a7.928 7.928 0 000-1.812l.79-.728a1.5 1.5 0 00-.27-1.834l-1.5-2.598a1.5 1.5 0 001.815-.534l.976.462a8.01 8.01 0 001.57.906l-.26-1.042a1.5 1.5 0 00-1.414-1.05h-3.034z" />
 
                                     <circle cx="12" cy="12" r="3" />
 
@@ -465,6 +470,30 @@
 
                 <!-- 3. BAS FIXE -->
                 <div class="p-5 shrink-0 border-t border-gray-900 bg-gray-950">
+
+                    <!-- INSTALLATION PWA -->
+                    <button id="pwa-sidebar-install-btn"
+                            type="button"
+                            onclick="installPwaApp()"
+                            class="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 mb-3 rounded-xl text-xs font-bold text-gray-900 transition shadow-md hover:opacity-90"
+                            style="background-color: var(--primary);"
+                            title="Installer E-Stockly">
+
+                        <svg class="w-4 h-4 shrink-0"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke="currentColor"
+                             stroke-width="2">
+
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" />
+
+                        </svg>
+
+                        Installer l'application
+
+                    </button>
 
                     <div class="flex items-center bg-gray-900 rounded-xl border border-gray-800 p-1 mb-3 text-sm font-medium shadow-inner">
 
@@ -605,7 +634,7 @@
 
                                 <path stroke-linecap="round"
                                       stroke-linejoin="round"
-                                      d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 001 1v2a1 1 0 01-1 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 001 1v2a1 1 0 01-1 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5v2a1 1 0 001 1z" />
+                                      d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 01-1-1H5a1 1 0 01-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 01-1 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5v2a1 1 0 001 1z" />
 
                             </svg>
 
@@ -754,7 +783,7 @@
 
                                             <path stroke-linecap="round"
                                                   stroke-linejoin="round"
-                                                  d="M11.983 2.5a1.5 1.5 0 00-1.414 1.05l-.26 1.042a8.01 8.01 0 00-1.57.906l-.976-.462a1.5 1.5 0 00-1.815.534l-1.5 2.598a1.5 1.5 0 00.27 1.834l.79.728a7.928 7.928 0 000 1.812l-.79.728a1.5 1.5 0 00-.27 1.834l1.5 2.598a1.5 1.5 0 001.815.534l.976-.462a8.01 8.01 0 001.57.906l.26 1.042a1.5 1.5 0 001.414 1.05h3.034a1.5 1.5 0 001.414-1.05l.26-1.042a8.01 8.01 0 001.57-.906l.976.462a1.5 1.5 0 001.815-.534l1.5-2.598a1.5 1.5 0 00-.27-1.834l-.79-.728a7.928 7.928 0 000-1.812l.79-.728a1.5 1.5 0 00.27-1.834l-1.5-2.598a1.5 1.5 0 00-1.815-.534l-.976.462a8.01 8.01 0 001.57.906l-.26-1.042a1.5 1.5 0 00-1.414-1.05h-3.034z" />
+                                                  d="M11.983 2.5a1.5 1.5 0 00-1.414 1.05l-.26 1.042a8.01 8.01 0 00-1.57.906l-.976-.462a1.5 1.5 0 00-1.815.534l-1.5 2.598a1.5 1.5 0 00.27 1.834l.79.728a7.928 7.928 0 000 1.812l-.79.728a1.5 1.5 0 00-.27 1.834l1.5 2.598a1.5 1.5 0 001.815.534l.976-.462a8.01 8.01 0 001.57.906l.26 1.042a1.5 1.5 0 001.414 1.05h3.034a1.5 1.5 0 001.414-1.05l.26-1.042a8.01 8.01 0 001.57-.906l.976.462a1.5 1.5 0 001.815-.534l1.5-2.598a1.5 1.5 0 00-.27-1.834l-.79-.728a7.928 7.928 0 000-1.812l.79-.728a1.5 1.5 0 00-.27-1.834l-1.5-2.598a1.5 1.5 0 001.815-.534l.976.462a8.01 8.01 0 001.57.906l-.26-1.042a1.5 1.5 0 00-1.414-1.05h-3.034z" />
 
                                             <circle cx="12" cy="12" r="3" />
 
@@ -1027,19 +1056,165 @@
 
     </script>
 
+    <!-- ========================================================= -->
+    <!-- PWA INSTALLATION -->
+    <!-- ========================================================= -->
     <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('Service Worker enregistré:', registration.scope);
-        })
-        .catch((error) => {
-          console.log('Échec de l\'enregistrement du Service Worker:', error);
+
+        /*
+         * Événement fourni par le navigateur lorsque
+         * l'application peut être installée.
+         */
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', function (event) {
+
+            console.log('E-Stockly : prompt PWA disponible.');
+
+            /*
+             * Empêche le navigateur d'afficher automatiquement
+             * son propre prompt.
+             */
+            event.preventDefault();
+
+            /*
+             * On conserve l'événement pour le bouton
+             * "Installer l'application".
+             */
+            deferredPrompt = event;
+
         });
-    });
-  }
-</script>
+
+
+        /*
+         * Fonction globale utilisée par le bouton :
+         *
+         * onclick="installPwaApp()"
+         */
+        window.installPwaApp = async function () {
+
+            console.log(
+                "E-Stockly : clic sur Installer l'application."
+            );
+
+            /*
+             * Si aucun prompt n'est actuellement disponible,
+             * on ne fait rien.
+             */
+            if (!deferredPrompt) {
+
+                console.log(
+                    "E-Stockly : le prompt d'installation PWA n'est pas disponible."
+                );
+
+                return;
+            }
+
+            try {
+
+                /*
+                 * On récupère le prompt actuel.
+                 */
+                const promptEvent = deferredPrompt;
+
+                /*
+                 * Affiche le prompt natif du navigateur.
+                 */
+                await promptEvent.prompt();
+
+                /*
+                 * Attend le choix de l'utilisateur.
+                 */
+                const choiceResult = await promptEvent.userChoice;
+
+                if (choiceResult.outcome === 'accepted') {
+
+                    console.log(
+                        "E-Stockly : installation acceptée."
+                    );
+
+                } else {
+
+                    console.log(
+                        "E-Stockly : installation annulée par l'utilisateur."
+                    );
+
+                }
+
+                /*
+                 * Le prompt ne doit pas être réutilisé.
+                 */
+                deferredPrompt = null;
+
+            } catch (error) {
+
+                console.error(
+                    "E-Stockly : erreur lors de l'installation PWA :",
+                    error
+                );
+
+            }
+
+        };
+
+
+        /*
+         * Confirmation réelle de l'installation.
+         *
+         * IMPORTANT :
+         * On ne cache PAS le bouton de la sidebar.
+         *
+         * Il reste donc toujours visible.
+         */
+        window.addEventListener('appinstalled', function () {
+
+            console.log(
+                'E-Stockly : application installée avec succès.'
+            );
+
+            deferredPrompt = null;
+
+        });
+
+    </script>
+
+    <!-- ========================================================= -->
+    <!-- SERVICE WORKER -->
+    <!-- ========================================================= -->
+    <script>
+
+        if ('serviceWorker' in navigator) {
+
+            window.addEventListener('load', () => {
+
+                navigator.serviceWorker.register('/sw.js')
+
+                    .then((registration) => {
+
+                        console.log(
+                            'Service Worker enregistré:',
+                            registration.scope
+                        );
+
+                    })
+
+                    .catch((error) => {
+
+                        console.log(
+                            'Échec de l\'enregistrement du Service Worker:',
+                            error
+                        );
+
+                    });
+
+            });
+
+        }
+
+    </script>
+
+
 
 </body>
 </html>
+```

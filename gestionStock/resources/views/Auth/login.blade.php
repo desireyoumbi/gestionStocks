@@ -627,7 +627,7 @@
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
-                                    d="M9.88 5.09A10.94 10.94 0 0112 5c4.478 0 8.268 2.943 9.542 7a11.05 11.05 0 01-4.043 5.21M6.228 6.228A11.05 11.05 0 002.458 12c.746 2.376 2.38 4.364 4.377 5.583A10.94 10.94 0 0112 19c1.06 0 2.08-.15 3.04-.43"
+                                    d="M9.88 5.09A10.94 10.94 0 0112 5c4.478 0 8.268 2.943 9.542 7a11.05 11.05 0 01-4.043 5.21M6.228 6.228A11.05 11.05 0 002.458 12c.746 2.376 2.38 4.364 4.377 5.583A10.94 10.94 0 0012 19c1.06 0 2.08-.15 3.04-.43"
                                 />
 
                             </svg>
@@ -771,12 +771,17 @@
 
         (function () {
 
-            const INSTALLED_KEY = 'pwa_installed';
+            let deferredPrompt = null;
 
 
             /*
              * Vérifie si l'application fonctionne déjà
-             * comme une application installée.
+             * comme une application installée, MAINTENANT, en direct.
+             *
+             * On n'utilise plus de drapeau permanent en localStorage :
+             * un tel drapeau reste bloqué sur "true" même après une
+             * désinstallation, ce qui cachait le bouton à tort. Cette
+             * vérification-ci est toujours exacte, à chaque chargement.
              */
 
             function isRunningAsInstalledApp() {
@@ -802,17 +807,15 @@
                 const desktopWrap =
                     document.getElementById('pwa-manual-btn-desktop-wrap');
 
-
                 if (mobileWrap) {
 
-                    mobileWrap.classList.add('hidden');
+                    mobileWrap.style.display = 'none';
 
                 }
 
-
                 if (desktopWrap) {
 
-                    desktopWrap.classList.add('hidden');
+                    desktopWrap.style.display = 'none';
 
                 }
 
@@ -821,19 +824,57 @@
 
             /*
              * Vérification au chargement de la page.
-             *
-             * Si l'utilisateur a déjà installé l'application,
-             * les boutons sont immédiatement cachés.
              */
 
-            if (
-                isRunningAsInstalledApp() ||
-                localStorage.getItem(INSTALLED_KEY) === 'true'
-            ) {
+            if (isRunningAsInstalledApp()) {
 
                 hideManualButtons();
 
             }
+
+
+            /*
+             * Capture l'événement du navigateur qui propose l'installation.
+             * Sans ce bloc, deferredPrompt reste toujours vide,
+             * d'où l'erreur "installPwaApp is not defined" ou
+             * "installation non disponible" au clic.
+             */
+
+            window.addEventListener('beforeinstallprompt', function (event) {
+
+                event.preventDefault();
+                deferredPrompt = event;
+
+            });
+
+
+            /*
+             * Fonction appelée par le clic sur les boutons "Installer".
+             */
+
+            async function triggerInstall() {
+
+                if (!deferredPrompt) {
+
+                    alert("L'installation n'est pas disponible pour le moment sur ce navigateur.");
+                    return;
+
+                }
+
+                deferredPrompt.prompt();
+
+                const { outcome } = await deferredPrompt.userChoice;
+
+                deferredPrompt = null;
+
+            }
+
+
+            /*
+             * Rendue accessible globalement pour onclick="installPwaApp()".
+             */
+
+            window.installPwaApp = triggerInstall;
 
 
             /*
@@ -843,18 +884,13 @@
             window.addEventListener('appinstalled', function () {
 
                 /*
-                 * Mémorise définitivement l'installation
-                 * pour cette origine.
-                 */
-
-                localStorage.setItem(INSTALLED_KEY, 'true');
-
-
-                /*
-                 * Cache immédiatement les boutons.
+                 * Cache immédiatement les boutons pour cette session.
+                 * (Plus de mémorisation permanente — voir la note plus haut.)
                  */
 
                 hideManualButtons();
+
+                deferredPrompt = null;
 
             });
 
