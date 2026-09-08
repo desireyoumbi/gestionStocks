@@ -3,23 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Connexion - E-Stockly</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- ================= PWA ================= -->
+
+    <link rel="manifest" href="/manifest.json">
+
+    <meta name="theme-color" content="#0a1a3a">
+
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
 </head>
+
 <body class="min-h-screen flex bg-slate-50">
 
+
     <!-- ================= PANNEAU GAUCHE (branding) ================= -->
+
     <div class="hidden lg:flex lg:w-[45%] min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900">
 
-        <div class="absolute inset-0 opacity-10"
-             style="background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px);
-                    background-size: 60px 60px;">
+        <div
+            class="absolute inset-0 opacity-10"
+            style="background-image: linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px);
+                   background-size: 60px 60px;">
         </div>
+
 
         <div class="relative z-10 flex flex-col justify-between p-10 xl:p-14 text-white w-full">
 
+
             <!-- Logo -->
+
             <div class="flex items-center gap-3">
+
                 <img
                     src="{{ asset('images/logo.png') }}"
                     alt="Logo E-Stockly"
@@ -27,6 +48,7 @@
                 >
 
                 <div class="flex flex-col">
+
                     <span class="font-bold text-lg tracking-tight leading-none">
                         E-Stockly
                     </span>
@@ -34,33 +56,49 @@
                     <span class="text-[11px] text-indigo-300 font-medium tracking-wide mt-0.5">
                         Gestion de stock centralisée
                     </span>
+
                 </div>
+
             </div>
 
+
             <!-- Titre + description -->
+
             <div class="mt-10">
 
                 <p class="text-xs font-semibold tracking-widest text-indigo-300 uppercase mb-3">
                     Plateforme de gestion intelligente
                 </p>
 
+
                 <h1 class="text-4xl xl:text-[2.75rem] font-extrabold leading-[1.15]">
+
                     Bon retour parmi nous
+
                     <br>
+
                     <span class="text-amber-400">
                         gérez vos stocks
                     </span>
+
                 </h1>
 
+
                 <p class="mt-4 text-indigo-200 text-base max-w-md leading-relaxed">
+
                     Centralisez vos stocks, vos ventes et vos approvisionnements
                     dans un espace clair, rapide et conçu pour les équipes qui avancent.
+
                 </p>
 
+
                 <!-- Cartes fonctionnalités -->
+
                 <div class="grid grid-cols-2 gap-4 mt-8 max-w-lg">
 
+
                     <!-- Gestion des stocks -->
+
                     <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
 
                         <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center mb-2.5">
@@ -72,11 +110,13 @@
                                 stroke="currentColor"
                                 stroke-width="2"
                             >
+
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                                 />
+
                             </svg>
 
                         </div>
@@ -91,7 +131,9 @@
 
                     </div>
 
+
                     <!-- Analytics -->
+
                     <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
 
                         <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center mb-2.5">
@@ -103,11 +145,13 @@
                                 stroke="currentColor"
                                 stroke-width="2"
                             >
+
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14"
                                 />
+
                             </svg>
 
                         </div>
@@ -122,7 +166,9 @@
 
                     </div>
 
+
                     <!-- Multi-entrepôts -->
+
                     <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
 
                         <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center mb-2.5">
@@ -134,11 +180,13 @@
                                 stroke="currentColor"
                                 stroke-width="2"
                             >
+
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2M5 21H3m4-14h4m-4 4h4m-4 4h4"
                                 />
+
                             </svg>
 
                         </div>
@@ -153,7 +201,9 @@
 
                     </div>
 
+
                     <!-- Ventes & Appro -->
+
                     <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
 
                         <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center mb-2.5">
@@ -165,11 +215,13 @@
                                 stroke="currentColor"
                                 stroke-width="2"
                             >
+
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-2.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4"
                                 />
+
                             </svg>
 
                         </div>
@@ -185,12 +237,16 @@
                     </div>
 
                 </div>
+
             </div>
 
+
             <!-- Statistiques -->
+
             <div class="flex gap-12 border-t border-white/10 pt-6">
 
                 <div>
+
                     <p class="text-2xl font-extrabold">
                         100%
                     </p>
@@ -198,9 +254,12 @@
                     <p class="text-xs text-indigo-300 mt-1">
                         Sécurisé
                     </p>
+
                 </div>
 
+
                 <div>
+
                     <p class="text-2xl font-extrabold">
                         99.9%
                     </p>
@@ -208,9 +267,12 @@
                     <p class="text-xs text-indigo-300 mt-1">
                         Disponibilité
                     </p>
+
                 </div>
 
+
                 <div>
+
                     <p class="text-2xl font-extrabold">
                         24/7
                     </p>
@@ -218,36 +280,143 @@
                     <p class="text-xs text-indigo-300 mt-1">
                         Support
                     </p>
+
                 </div>
 
             </div>
 
         </div>
+
     </div>
 
 
-    <!-- ================= PANNEAU DROIT (formulaire de connexion) ================= -->
+    <!-- ================= PANNEAU DROIT ================= -->
+
     <div class="w-full lg:w-[55%] min-h-screen flex items-center justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-24 bg-[#121620] lg:bg-white">
+
 
         <div class="max-w-md w-full bg-white lg:bg-transparent p-6 sm:p-8 rounded-3xl lg:rounded-none shadow-xl lg:shadow-none border border-slate-100 lg:border-none">
 
-            <!-- Logo mobile uniquement -->
-            <div class="flex items-center gap-2 mb-8 lg:hidden">
 
-                <img
-                    src="{{ asset('images/logo.png') }}"
-                    alt="Logo E-Stockly"
-                    class="w-9 h-9 rounded-lg object-cover object-top"
-                >
+            <!-- ================= LOGO MOBILE ================= -->
 
-                <span class="font-bold text-slate-900 text-lg">
-                    E-Stockly
-                </span>
+            <div class="flex items-center justify-between mb-8 lg:hidden">
+
+                <div class="flex items-center gap-2">
+
+                    <img
+                        src="{{ asset('images/logo.png') }}"
+                        alt="Logo E-Stockly"
+                        class="w-9 h-9 rounded-lg object-cover object-top"
+                    >
+
+                    <span class="font-bold text-slate-900 text-lg">
+                        E-Stockly
+                    </span>
+
+                </div>
+
+
+                <!-- Bouton installation mobile -->
+
+                <div id="pwa-manual-btn-mobile-wrap">
+
+                    <button
+                        id="pwa-manual-btn-mobile"
+                        onclick="installPwaApp()"
+                        class="pwa-pulse flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 px-3 py-2 rounded-full shadow-md shadow-indigo-500/30 transition"
+                    >
+
+                        <svg
+                            class="w-3.5 h-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2.5"
+                        >
+
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+                            />
+
+                        </svg>
+
+                        Installer
+
+                    </button>
+
+                </div>
 
             </div>
 
 
-            <!-- En-tête -->
+            <!-- ================= BOUTON DESKTOP ================= -->
+
+            <div
+                id="pwa-manual-btn-desktop-wrap"
+                class="hidden lg:flex justify-end mb-2"
+            >
+
+                <button
+                    id="pwa-manual-btn-desktop"
+                    onclick="installPwaApp()"
+                    class="pwa-pulse flex items-center gap-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 px-4 py-2 rounded-full shadow-md shadow-indigo-500/30 transition"
+                >
+
+                    <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                    >
+
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+                        />
+
+                    </svg>
+
+                    Installer l'application
+
+                </button>
+
+            </div>
+
+
+            <!-- Animation bouton -->
+
+            <style>
+
+                @keyframes pwaPulseGlow {
+
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5);
+                    }
+
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+                    }
+
+                }
+
+                .pwa-pulse {
+                    animation: pwaPulseGlow 2.2s ease-in-out infinite;
+                }
+
+                .pwa-pulse:hover {
+                    animation: none;
+                }
+
+            </style>
+
+
+            <!-- ================= EN-TÊTE ================= -->
+
             <div class="mb-8">
 
                 <p class="text-xs font-bold tracking-widest text-indigo-600 uppercase">
@@ -265,7 +434,8 @@
             </div>
 
 
-            <!-- Message de succès -->
+            <!-- ================= MESSAGE SUCCÈS ================= -->
+
             @if (session('success'))
 
                 <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg text-sm text-emerald-700 mb-6">
@@ -277,7 +447,8 @@
             @endif
 
 
-            <!-- Erreurs globales -->
+            <!-- ================= ERREURS ================= -->
+
             @if ($errors->any())
 
                 <div class="bg-red-50 border border-red-200 p-4 rounded-lg text-sm text-red-700 mb-6">
@@ -303,7 +474,8 @@
             @endif
 
 
-            <!-- Formulaire -->
+            <!-- ================= FORMULAIRE ================= -->
+
             <form
                 class="space-y-5"
                 action="{{ route('login') }}"
@@ -313,7 +485,8 @@
                 @csrf
 
 
-                <!-- Code de connexion unique -->
+                <!-- Code de connexion -->
+
                 <div>
 
                     <div class="flex items-center justify-between mb-1.5">
@@ -324,6 +497,7 @@
                         >
                             Code de connexion unique
                         </label>
+
 
                         @if (Route::has('code-connexion.request'))
 
@@ -354,6 +528,7 @@
 
 
                 <!-- Mot de passe -->
+
                 <div>
 
                     <div class="flex items-center justify-between mb-1.5">
@@ -364,6 +539,7 @@
                         >
                             Mot de passe
                         </label>
+
 
                         @if (Route::has('password.request'))
 
@@ -392,6 +568,7 @@
 
 
                         <!-- Bouton afficher / masquer -->
+
                         <button
                             type="button"
                             onclick="togglePassword('password', this)"
@@ -401,6 +578,7 @@
                         >
 
                             <!-- Œil ouvert -->
+
                             <svg
                                 class="w-5 h-5 eye-open"
                                 fill="none"
@@ -425,6 +603,7 @@
 
 
                             <!-- Œil fermé -->
+
                             <svg
                                 class="w-5 h-5 eye-closed hidden"
                                 fill="none"
@@ -448,7 +627,7 @@
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
-                                    d="M9.88 5.09A10.94 10.94 0 0112 5c4.478 0 8.268 2.943 9.542 7a11.05 11.05 0 01-4.043 5.21M6.228 6.228A11.05 11.05 0 002.458 12c.746 2.376 2.38 4.364 4.377 5.583A10.94 10.94 0 0012 19c1.06 0 2.08-.15 3.04-.43"
+                                    d="M9.88 5.09A10.94 10.94 0 0112 5c4.478 0 8.268 2.943 9.542 7a11.05 11.05 0 01-4.043 5.21M6.228 6.228A11.05 11.05 0 002.458 12c.746 2.376 2.38 4.364 4.377 5.583A10.94 10.94 0 0112 19c1.06 0 2.08-.15 3.04-.43"
                                 />
 
                             </svg>
@@ -461,6 +640,7 @@
 
 
                 <!-- Se souvenir de moi -->
+
                 <label class="flex items-center gap-2 cursor-pointer w-fit">
 
                     <input
@@ -476,7 +656,8 @@
                 </label>
 
 
-                <!-- Bouton de soumission -->
+                <!-- Bouton connexion -->
+
                 <button
                     type="submit"
                     class="w-full py-3 px-4 rounded-lg shadow-sm text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition mt-2"
@@ -487,7 +668,8 @@
             </form>
 
 
-            <!-- Badges de confiance -->
+            <!-- ================= BADGES ================= -->
+
             <div class="flex items-center justify-center gap-5 text-xs text-slate-400 mt-6">
 
                 <span class="flex items-center gap-1.5">
@@ -537,15 +719,32 @@
 
             </div>
 
-            <!-- Liens CGU et Politique de Confidentialité -->
+
+            <!-- ================= CGU ================= -->
+
             <div class="flex items-center justify-center gap-3 text-xs text-slate-500 mt-4">
-                <a href="{{ route('terms') }}" class="hover:text-indigo-600 transition">Conditions d'utilisation</a>
+
+                <a
+                    href="{{ route('terms') }}"
+                    class="hover:text-indigo-600 transition"
+                >
+                    Conditions d'utilisation
+                </a>
+
                 <span>·</span>
-                <a href="{{ route('privacy') }}" class="hover:text-indigo-600 transition">Politique de confidentialité</a>
+
+                <a
+                    href="{{ route('privacy') }}"
+                    class="hover:text-indigo-600 transition"
+                >
+                    Politique de confidentialité
+                </a>
+
             </div>
 
 
-            <!-- Lien vers l'inscription -->
+            <!-- ================= INSCRIPTION ================= -->
+
             <p class="text-center text-sm text-slate-600 mt-6">
 
                 Pas encore de compte ?
@@ -559,30 +758,139 @@
 
             </p>
 
+
         </div>
 
     </div>
 
 
-    <!-- ================= JAVASCRIPT ================= -->
+    <!-- ================= BANNIÈRE PWA ================= -->
+
+    @include('components.pwa-install-banner')
+
+
+    <!-- ================= GESTION INSTALLATION PWA ================= -->
+
+    <script>
+
+        (function () {
+
+            const INSTALLED_KEY = 'pwa_installed';
+
+
+            /*
+             * Vérifie si l'application fonctionne déjà
+             * comme une application installée.
+             */
+
+            function isRunningAsInstalledApp() {
+
+                return (
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.navigator.standalone === true
+                );
+
+            }
+
+
+            /*
+             * Cache les boutons d'installation
+             * présents sur la page de connexion.
+             */
+
+            function hideManualButtons() {
+
+                const mobileWrap =
+                    document.getElementById('pwa-manual-btn-mobile-wrap');
+
+                const desktopWrap =
+                    document.getElementById('pwa-manual-btn-desktop-wrap');
+
+
+                if (mobileWrap) {
+
+                    mobileWrap.classList.add('hidden');
+
+                }
+
+
+                if (desktopWrap) {
+
+                    desktopWrap.classList.add('hidden');
+
+                }
+
+            }
+
+
+            /*
+             * Vérification au chargement de la page.
+             *
+             * Si l'utilisateur a déjà installé l'application,
+             * les boutons sont immédiatement cachés.
+             */
+
+            if (
+                isRunningAsInstalledApp() ||
+                localStorage.getItem(INSTALLED_KEY) === 'true'
+            ) {
+
+                hideManualButtons();
+
+            }
+
+
+            /*
+             * Détecte l'installation pendant que la page est ouverte.
+             */
+
+            window.addEventListener('appinstalled', function () {
+
+                /*
+                 * Mémorise définitivement l'installation
+                 * pour cette origine.
+                 */
+
+                localStorage.setItem(INSTALLED_KEY, 'true');
+
+
+                /*
+                 * Cache immédiatement les boutons.
+                 */
+
+                hideManualButtons();
+
+            });
+
+
+        })();
+
+    </script>
+
+
+    <!-- ================= AFFICHER / MASQUER MOT DE PASSE ================= -->
+
     <script>
 
         function togglePassword(id, btn) {
 
             const input = document.getElementById(id);
 
-            const eyeOpen = btn.querySelector('.eye-open');
+            const eyeOpen =
+                btn.querySelector('.eye-open');
 
-            const eyeClosed = btn.querySelector('.eye-closed');
+            const eyeClosed =
+                btn.querySelector('.eye-closed');
 
 
             if (input.type === 'password') {
 
-                // Afficher le mot de passe
                 input.type = 'text';
 
                 eyeOpen.classList.add('hidden');
+
                 eyeClosed.classList.remove('hidden');
+
 
                 btn.setAttribute(
                     'aria-label',
@@ -596,11 +904,12 @@
 
             } else {
 
-                // Masquer le mot de passe
                 input.type = 'password';
 
                 eyeClosed.classList.add('hidden');
+
                 eyeOpen.classList.remove('hidden');
+
 
                 btn.setAttribute(
                     'aria-label',
@@ -611,10 +920,48 @@
                     'title',
                     'Afficher le mot de passe'
                 );
+
             }
+
         }
 
     </script>
+
+
+    <!-- ================= SERVICE WORKER ================= -->
+
+    <script>
+
+        if ('serviceWorker' in navigator) {
+
+            window.addEventListener('load', () => {
+
+                navigator.serviceWorker.register('/sw.js')
+
+                    .then((registration) => {
+
+                        console.log(
+                            'Service Worker enregistré:',
+                            registration.scope
+                        );
+
+                    })
+
+                    .catch((error) => {
+
+                        console.log(
+                            'Échec de l\'enregistrement du Service Worker:',
+                            error
+                        );
+
+                    });
+
+            });
+
+        }
+
+    </script>
+
 
 </body>
 </html>

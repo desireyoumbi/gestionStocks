@@ -2874,5 +2874,6 @@
     });
   }
 </script>
+@include('components.pwa-install-banner')
 </body>
 </html>
