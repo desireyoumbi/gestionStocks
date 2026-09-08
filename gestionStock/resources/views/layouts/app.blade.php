@@ -1,4 +1,3 @@
-```blade
 <!DOCTYPE html>
 <html lang="fr" class="dark">
 <head>
@@ -1217,4 +1216,4 @@
 
 </body>
 </html>
-```
+

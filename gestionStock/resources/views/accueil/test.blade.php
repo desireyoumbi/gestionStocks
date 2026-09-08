@@ -11,6 +11,14 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
 
+    {{-- partage adaptatif --}}
+    <meta property="og:image" content="https://darkslateblue-emu-103988.hostingersite.com/images/logo.png">
+    <meta property="og:title" content="E-Stockly | Gestion de stock intelligente">
+<meta property="og:description" content="Suivez vos entrées, sorties et sécurisez la gestion de votre stock en toute simplicité.">
+<meta property="og:image" content="https://darkslateblue-emu-103988.hostingersite.com/images/logo.png">
+<meta property="og:url" content="https://darkslateblue-emu-103988.hostingersite.com">
+<meta property="og:type" content="website">
+
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
