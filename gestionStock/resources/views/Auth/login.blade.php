@@ -764,10 +764,6 @@
     </div>
 
 
-    <!-- ================= BANNIÈRE PWA ================= -->
-
-    @include('components.pwa-install-banner')
-
 
     <!-- ================= GESTION INSTALLATION PWA ================= -->
 
