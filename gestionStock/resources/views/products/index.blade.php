@@ -350,18 +350,12 @@
 
                                         @php
                                             /*
-                                             * Le contrôleur utilise :
-                                             *
-                                             * store('products', 's3')
-                                             *
-                                             * Donc la valeur en base est normalement :
-                                             *
-                                             * products/nom-image.jpg
-                                             *
-                                             * L'URL publique Supabase commence directement
-                                             * par /object/public/ puis la valeur en base.
+                                             * Même formule que edit.blade.php (qui fonctionne) :
+                                             * le bucket Supabase s'appelle "products", ET le fichier
+                                             * est stocké dans un dossier "products/" à l'intérieur —
+                                             * d'où les deux segments "products" dans l'URL finale.
                                              */
-                                            $imageUrl = 'https://xgvcyiaflsawvfmjuoxx.supabase.co/storage/v1/object/public/' . $product->image;
+                                            $imageUrl = 'https://xgvcyiaflsawvfmjuoxx.supabase.co/storage/v1/object/public/products/' . ltrim($product->image, '/');
                                         @endphp
 
                                         <img src="{{ $imageUrl }}"
