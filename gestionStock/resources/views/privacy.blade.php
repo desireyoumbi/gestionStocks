@@ -1,4 +1,3 @@
-```html
 <div class="min-h-screen bg-gray-50 py-10 sm:py-14">
     <div class="max-w-4xl mx-auto px-4 sm:px-6">
 
@@ -212,4 +211,4 @@
         </div>
     </div>
 </div>
-```
+
