@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-```
+
 <title>Conditions Générales d'Utilisation - E-Stockly</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
@@ -16,13 +16,13 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
-```
+
 
 </head>
 
 <body class="min-h-screen bg-gray-50">
 
-```
+
 <div class="min-h-screen bg-gray-50 py-10 sm:py-14">
     <div class="max-w-4xl mx-auto px-4 sm:px-6">
 
@@ -619,7 +619,6 @@
 
     </div>
 </div>
-```
 
 </body>
 </html>
