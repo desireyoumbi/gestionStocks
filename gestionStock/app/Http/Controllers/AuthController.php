@@ -26,11 +26,17 @@ class AuthController extends Controller
             'phone' => 'required|string|max:15',
             'email' => 'required|string|email|max:255',
             'nom_boutique' => 'required|string|max:255',
+            'ville' => 'required|string|max:100',
+            'quartier' => 'required|string|max:150',
+            'indication' => 'required|string|max:255',
         ]);
 
         return DB::transaction(function () use ($request) {
             $boutique = Boutique::create([
                 'nom' => $request->nom_boutique,
+                'ville' => $request->ville,
+                'quartier' => $request->quartier,
+                'indication' => $request->indication
             ]);
 
             $prefix = strtoupper(Str::slug($request->nom_boutique));

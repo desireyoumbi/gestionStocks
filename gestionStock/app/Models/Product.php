@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Product extends Model
 {
@@ -75,5 +76,16 @@ class Product extends Model
     public function stockMovemnts()
     {
         return $this->hasMany(StockMovement::class);
+    }
+
+    // relation plusieur a plusieur avec reservation 
+    public function reservations(): BelongsToMany
+    {
+        return $this->belongsToMany(Reservation::class, 'reservation_items')
+            ->withPivot([
+                'quantity',
+                'unit_price',
+            ])
+            ->withTimestamps();
     }
 }
