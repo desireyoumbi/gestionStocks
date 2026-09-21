@@ -3,6 +3,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Movement extends Model
@@ -19,6 +21,7 @@ class Movement extends Model
         'updated_by',
         'client_phone', // <- Ajouté ici
         'annule_at',
+        'reservation_id',
     ];
 
     protected $casts = [
@@ -52,4 +55,10 @@ class Movement extends Model
                     ->withPivot('qty','unit_price')
                     ->withTimestamps();
     }
+
+    // relation avec reservation 
+    public function reservation(): BelongsTo
+{
+    return $this->belongsTo(Reservation::class);
+}
 }

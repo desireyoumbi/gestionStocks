@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Boutique extends Model
@@ -15,7 +16,13 @@ class Boutique extends Model
         'logo',
         'primary_color',
         'statut',
+        'ville',
+        'quartier',
+        'indication',
+        'marketplace_enabled'
     ];
+
+    public $casts = ['marketplace_enabled' => 'boolean'];
 
     public function users()
     {
@@ -70,5 +77,15 @@ class Boutique extends Model
         $totalOut = $this->cashMovements()->where('type', 'out')->sum('amount');
 
         return $totalIn - $totalOut;
+    }
+
+     public function preferredCustomers(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'preferred_boutique_id');
+    }
+
+    // relation avec reservation dans boutique
+    public function reservations(){
+        return $this->hasMany(Reservation::class);
     }
 }
