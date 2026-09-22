@@ -44,7 +44,7 @@
                          stroke="currentColor"
                          stroke-width="2.5">
                         <path stroke-linecap="round"
-                              stroke-linejoin="round"
+                              stroke-linecap="round"
                               d="M12 4v16m8-8H4" />
                     </svg>
 
@@ -349,11 +349,6 @@
                                     @if($product->image)
 
                                         @php
-                                            /*
-                                             * Stockage local (disque "public") : Laravel construit
-                                             * l'URL lui-même à partir du lien symbolique storage/.
-                                             * Plus besoin de coder une URL Supabase en dur.
-                                             */
                                             $imageUrl = asset('storage/' . $product->image);
                                         @endphp
 
@@ -363,21 +358,15 @@
                                              onclick="openImageModal('{{ $imageUrl }}', '{{ addslashes($product->name) }}')"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
 
-
-                                        {{-- Image par défaut si le fichier local ne répond pas --}}
                                         <div style="display:none;"
                                              class="w-10 h-10 rounded-xl bg-gray-100 items-center justify-center text-gray-400 text-[10px] font-bold border border-gray-200">
-
                                             IMG
-
                                         </div>
 
                                     @else
 
                                         <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-[10px] font-bold border border-gray-200">
-
                                             IMG
-
                                         </div>
 
                                     @endif
@@ -402,9 +391,7 @@
 
                             {{-- Catégorie --}}
                             <td class="px-6 py-4 text-gray-500">
-
                                 {{ $product->category->name ?? '-' }}
-
                             </td>
 
 
@@ -504,7 +491,7 @@
 
 
                                     {{-- Supprimer --}}
-                                    @if(Auth::user()->isAdmin())
+                                    @if(in_array(Auth::user()->role, ['administrateur', 'vice_administrateur']))
 
                                         <form action="{{ route('products.destroy', $product->id) }}"
                                               method="POST"

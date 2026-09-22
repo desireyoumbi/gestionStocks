@@ -397,7 +397,10 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        if (Auth::user()->role !== 'administrateur') {
+        if (!in_array(
+            Auth::user()->role,
+            ['administrateur', 'vice_administrateur']
+        )) {
             abort(
                 403,
                 "Vous n'avez pas l'autorisation de supprimer ce produit."
