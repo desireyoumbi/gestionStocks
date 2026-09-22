@@ -408,82 +408,106 @@ class PurchaseOrderController extends Controller
 
 
     /**
-     * Formulaire de modification d'une commande.
+ * Formulaire de modification d'une commande.
+ */
+public function edit(PurchaseOrder $purchaseOrder)
+{
+    /*
+     * Vérification boutique.
      */
-    public function edit(PurchaseOrder $purchaseOrder)
-    {
-        /*
-         * Vérification boutique.
-         */
-        if (
-            $purchaseOrder->boutique_id
-            !== Auth::user()->boutique_id
-        ) {
-            abort(
-                404,
-                "Commande introuvable."
-            );
-        }
-
-
-        /*
-         * Les vendeurs ne peuvent pas modifier.
-         */
-        if (Auth::user()->role === 'vendeur') {
-            abort(
-                403,
-                "Vous n'êtes pas autorisé à modifier cette commande."
-            );
-        }
-
-
-        /*
-         * Seules les commandes en attente
-         * peuvent être modifiées.
-         */
-        if ($purchaseOrder->status !== 'en_attente') {
-
-            return redirect()
-                ->route(
-                    'purchase_orders.show',
-                    $purchaseOrder
-                )
-                ->with(
-                    'error',
-                    'Seules les commandes en attente peuvent être modifiées.'
-                );
-        }
-
-
-        /*
-         * Chargement des relations.
-         */
-        $purchaseOrder->load([
-            'products',
-            'supplier',
-        ]);
-
-
-        /*
-         * Fournisseurs avec leurs produits.
-         */
-        $suppliers = Supplier::where(
-            'boutique_id',
-            Auth::user()->boutique_id
-        )
-        ->with('products')
-        ->get();
-
-
-        return view(
-            'purchase_orders.edit',
-            compact(
-                'purchaseOrder',
-                'suppliers'
-            )
+    if (
+        $purchaseOrder->boutique_id
+        !== Auth::user()->boutique_id
+    ) {
+        abort(
+            404,
+            "Commande introuvable."
         );
     }
 
+    /*
+     * Les vendeurs ne peuvent pas modifier.
+     */
+    if (Auth::user()->role === 'vendeur') {
+        abort(
+            403,
+            "Vous n'êtes pas autorisé à modifier cette commande."
+        );
+    }
+
+    /*
+     * Seules les commandes en attente
+     * peuvent être modifiées.
+     */
+    if ($purchaseOrder->status !== 'en_attente') {
+
+        return redirect()
+            ->route(
+                'purchase_orders.show',
+                $purchaseOrder
+            )
+            ->with(
+                'error',
+                'Seules les commandes en attente peuvent être modifiées.'
+            );
+    }
+
+    /*
+     * Chargement des relations.
+     */
+    $purchaseOrder->load([
+        'products',
+        'supplier',
+    ]);
+
+    /*
+     * Fournisseurs avec leurs produits.
+     */
+    $suppliers = Supplier::where(
+        'boutique_id',
+        Auth::user()->boutique_id
+    )
+    ->with('products')
+    ->get();
+
+    /*
+     * Données préparées pour JavaScript.
+     */
+    $supplierData = $suppliers->map(function ($supplier) {
+        return [
+            'id' => $supplier->id,
+            'name' => $supplier->name,
+            'products' => $supplier->products->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'purchase_price' => $product->purchase_price,
+                ];
+            })->values(),
+        ];
+    })->values();
+
+    /*
+     * Lignes existantes de la commande.
+     */
+    $existingLines = $purchaseOrder->products->map(function ($product) {
+        return [
+            'id' => $product->id,
+            'qty' => $product->pivot->qty,
+            'unit_price' => $product->pivot->unit_price,
+        ];
+    })->values();
+
+    return view(
+        'purchase_orders.edit',
+        compact(
+            'purchaseOrder',
+            'suppliers',
+            'supplierData',
+            'existingLines'
+        )
+    );
+}
 
     /**
      * Mise à jour d'une commande fournisseur.
