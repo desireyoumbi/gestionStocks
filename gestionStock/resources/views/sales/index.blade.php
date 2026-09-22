@@ -7,7 +7,6 @@
 
 <div class="space-y-6">
 
-```
 <!-- 1. CARTES STATISTIQUES -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
@@ -430,7 +429,6 @@
     </div>
 
 @endif
-```
 
 </div>
 
@@ -516,7 +514,7 @@ $whatsappUrl = !empty($phone)
 <div id="modal-success-sale"
      class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-4 backdrop-blur-sm">
 
-```
+
 <div class="w-full max-w-md space-y-6 rounded-3xl bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 p-6 shadow-2xl">
 
     <div class="text-center space-y-2">
@@ -621,7 +619,6 @@ $whatsappUrl = !empty($phone)
     </div>
 
 </div>
-```
 
 </div>
 
