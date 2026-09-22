@@ -507,7 +507,7 @@ if (strlen($phone) === 9) {
 $whatsappUrl = !empty($phone)
     ? "https://web.whatsapp.com/send?phone=" . $phone . "&text=" . $whatsappText
     : "https://web.whatsapp.com/";
-```
+
 
 @endphp
 
