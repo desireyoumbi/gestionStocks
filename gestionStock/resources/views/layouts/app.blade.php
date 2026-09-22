@@ -142,7 +142,7 @@
 
                 <div class="flex items-center space-x-3 px-1 truncate">
 
-                    @if(!empty($boutique->logo)
+                    @if(!empty($boutique->logo))
 
                         <img src="{{ $logoUrl }}"
                              alt="Logo de {{ $shopName }}"
