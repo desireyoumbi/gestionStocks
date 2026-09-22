@@ -58,10 +58,11 @@ class CategoryController extends Controller
 
         $validated = $request->validate([
             'name' => [
-                'required', 
-                'string', 
+                'required',
+                'string',
                 'max:255',
-                Rule::unique('categories', 'name')->where('boutique_id', Auth::user()->boutique_id)
+                Rule::unique('categories', 'name')
+                    ->where('boutique_id', Auth::user()->boutique_id)
             ],
             'description' => ['nullable', 'string'],
         ], [
@@ -71,7 +72,7 @@ class CategoryController extends Controller
         Category::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'boutique_id' => Auth::user()->boutique_id, // jamais depuis la requête
+            'boutique_id' => Auth::user()->boutique_id,
             'user_id' => Auth::id(),
         ]);
 
@@ -127,8 +128,8 @@ class CategoryController extends Controller
 
         $validated = $request->validate([
             'name' => [
-                'required', 
-                'string', 
+                'required',
+                'string',
                 'max:255',
                 Rule::unique('categories', 'name')
                     ->where('boutique_id', Auth::user()->boutique_id)
@@ -160,9 +161,15 @@ class CategoryController extends Controller
             abort(404, "Catégorie introuvable.");
         }
 
-        // Sécurité supplémentaire : seuls les administrateurs peuvent supprimer
-        if (Auth::user()->role !== 'administrateur') {
-            abort(403, "Vous n'avez pas l'autorisation de supprimer cette catégorie.");
+        // Sécurité supplémentaire : seuls les administrateurs et vice-administrateurs peuvent supprimer
+        if (!in_array(
+            Auth::user()->role,
+            ['administrateur', 'vice_administrateur']
+        )) {
+            abort(
+                403,
+                "Vous n'avez pas l'autorisation de supprimer cette catégorie."
+            );
         }
 
         $category->delete();
