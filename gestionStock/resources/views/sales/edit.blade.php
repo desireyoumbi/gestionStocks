@@ -1,4 +1,3 @@
-```blade
 @extends('layouts.app')
 
 @section('title', 'Modifier la vente')
@@ -102,23 +101,15 @@
 
 
     {{-- Formulaire --}}
-    <form action="{{ route('sales.update', $sale->id) }}"
+    <form action="{{ route('sales.update', [
+        'saleId' => $sale->id,
+        'productId' => $product->id
+    ]) }}"
           method="POST"
           id="sale-form">
 
         @csrf
         @method('PUT')
-
-
-        @php
-            /*
-             * La vente affichée doit correspondre
-             * au produit concerné par cette modification.
-             *
-             * Le contrôleur doit fournir ici le produit
-             * concerné dans $product.
-             */
-        @endphp
 
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -428,4 +419,4 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 @endsection
-```
+
