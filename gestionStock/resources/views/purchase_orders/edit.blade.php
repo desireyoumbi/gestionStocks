@@ -227,7 +227,7 @@
     |--------------------------------------------------------------------------
     |
     | Les données sont préparées dans le contrôleur.
-    | On évite les map() PHP complexes directement dans @json().
+    | On évite les map() PHP complexes directement dans les données JSON.
     |
     */
 
