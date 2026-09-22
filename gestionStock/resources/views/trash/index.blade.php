@@ -11,7 +11,6 @@ $types = $items->pluck('label', 'type')->unique();
 
 <div class="space-y-6" x-data="{ activeTab: 'all' }">
 
-```
 <div>
     <h1 class="text-xl font-bold text-slate-900">Corbeille</h1>
     <p class="text-sm text-slate-500 mt-0.5">
@@ -156,7 +155,7 @@ $types = $items->pluck('label', 'type')->unique();
     </table>
 
 </div>
-```
+
 
 </div>
 

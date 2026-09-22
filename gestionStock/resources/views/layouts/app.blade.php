@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 
 <html lang="fr">
@@ -5,99 +6,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Appliquer le thème avant l'affichage pour éviter le flash -->
-<script>
-    (function () {
-        const theme = localStorage.getItem('theme') || 'dark';
+    <!-- Appliquer le thème avant l'affichage pour éviter le flash -->
+    <script>
+        (function () {
+            const theme = localStorage.getItem('theme') || 'dark';
 
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+
+    <title>{{ Auth::user()->boutique->nom ?? 'E-Stockly' }}</title>
+
+    <link rel="manifest" href="/manifest.json">
+
+    <meta name="theme-color" content="#0a1a3a">
+
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
         }
-    })();
-</script>
+    </script>
 
-<title>{{ Auth::user()->boutique->nom ?? 'E-Stockly' }}</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-<link rel="manifest" href="/manifest.json">
+    @php
+        $boutique = Auth::user()->boutique ?? null;
+        $primaryColor = $boutique->primary_color ?? '#f59e0b';
+    @endphp
 
-<meta name="theme-color" content="#0a1a3a">
+    <style>
+        :root {
+            --primary: {{ $primaryColor }};
+        }
 
-<link rel="apple-touch-icon" href="/icons/icon-192.png">
+        .bg-custom-primary {
+            background-color: var(--primary);
+        }
 
-<meta name="apple-mobile-web-app-capable" content="yes">
+        .text-custom-primary {
+            color: var(--primary);
+        }
 
-<script src="https://cdn.tailwindcss.com"></script>
+        .border-custom-primary {
+            border-color: var(--primary);
+        }
 
-<script>
-    tailwind.config = {
-        darkMode: 'class',
-    }
-</script>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
 
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
 
-@php
-    $boutique = Auth::user()->boutique ?? null;
-    $primaryColor = $boutique->primary_color ?? '#f59e0b';
-@endphp
+        /* Champs en mode sombre */
+        html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+        html.dark select,
+        html.dark textarea {
+            background-color: #111827 !important;
+            color: #f9fafb !important;
+            border-color: #374151 !important;
+        }
 
-<style>
-    :root {
-        --primary: {{ $primaryColor }};
-    }
+        html.dark input::placeholder,
+        html.dark textarea::placeholder {
+            color: #9ca3af !important;
+        }
 
-    .bg-custom-primary {
-        background-color: var(--primary);
-    }
+        /* Champs en mode clair */
+        html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+        html:not(.dark) select,
+        html:not(.dark) textarea {
+            background-color: #ffffff;
+            color: #111827;
+            border-color: #d1d5db;
+        }
 
-    .text-custom-primary {
-        color: var(--primary);
-    }
-
-    .border-custom-primary {
-        border-color: var(--primary);
-    }
-
-    .no-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-
-    .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-
-    /* Champs en mode sombre */
-    html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
-    html.dark select,
-    html.dark textarea {
-        background-color: #111827 !important;
-        color: #f9fafb !important;
-        border-color: #374151 !important;
-    }
-
-    html.dark input::placeholder,
-    html.dark textarea::placeholder {
-        color: #9ca3af !important;
-    }
-
-    /* Champs en mode clair */
-    html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
-    html:not(.dark) select,
-    html:not(.dark) textarea {
-        background-color: #ffffff;
-        color: #111827;
-        border-color: #d1d5db;
-    }
-
-    html:not(.dark) input::placeholder,
-    html:not(.dark) textarea::placeholder {
-        color: #9ca3af;
-    }
-</style>
-
+        html:not(.dark) input::placeholder,
+        html:not(.dark) textarea::placeholder {
+            color: #9ca3af;
+        }
+    </style>
 
 </head>
 
@@ -142,7 +142,7 @@
 
                 <div class="flex items-center space-x-3 px-1 truncate">
 
-                    @if(!empty($boutique->logo))
+                    @if(!empty($boutique->logo)
 
                         <img src="{{ $logoUrl }}"
                              alt="Logo de {{ $shopName }}"
@@ -575,6 +575,22 @@
                     <button type="submit"
                             class="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium text-red-500 dark:text-red-400 hover:bg-red-500/15 transition shadow-sm">
 
+                        <svg class="w-4 h-4 shrink-0"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke="currentColor"
+                             stroke-width="2">
+
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15"/>
+
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M18 8.25L21.75 12 18 15.75M21.75 12H9"/>
+
+                        </svg>
+
                         Déconnexion
 
                     </button>
@@ -753,8 +769,21 @@
                              class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl py-1.5 z-50"
                              style="display: none;">
 
+                            <!-- PROFIL -->
                             <a href="{{ route('profile.edit') }}"
                                class="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900 transition">
+
+                                <svg class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke="currentColor"
+                                     stroke-width="2">
+
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M15.75 6.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0"/>
+
+                                </svg>
 
                                 Mon Profil
 
@@ -762,8 +791,23 @@
 
                             @if(Auth::user()->role !== 'vendeur')
 
+                                <!-- PARAMÈTRES -->
                                 <a href="{{ route('settings.boutique') }}"
                                    class="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900 transition">
+
+                                    <svg class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400"
+                                         fill="none"
+                                         viewBox="0 0 24 24"
+                                         stroke="currentColor"
+                                         stroke-width="2">
+
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              d="M11.983 2.5a1.5 1.5 0 00-1.414 1.05l-.26 1.042a8.01 8.01 0 00-1.57.906l-.976-.462a1.5 1.5 0 00-1.815.534l-.79.728a7.928 7.928 0 000 1.812l.79.728a1.5 1.5 0 00-.27 1.834l1.5 2.598a1.5 1.5 0 001.815.534l.976-.462a8.01 8.01 0 001.57.906l.26 1.042a1.5 1.5 0 001.414 1.05h3.034a1.5 1.5 0 001.414-1.05l.26-1.042a8.01 8.01 0 001.57-.906l.976.462a1.5 1.5 0 001.815-.534l1.5-2.598a1.5 1.5 0 00-.27-1.834l-.79-.728a7.928 7.928 0 000-1.812l.79-.728a1.5 1.5 0 00.27-1.834l-1.5-2.598a1.5 1.5 0 00-1.815-.534l-.976.462a8.01 8.01 0 00-1.57-.906l-.26-1.042a1.5 1.5 0 00-1.414-1.05h-3.034z" />
+
+                                        <circle cx="12" cy="12" r="3" />
+
+                                    </svg>
 
                                     Paramètres
 
@@ -773,12 +817,29 @@
 
                             <div class="h-px bg-gray-100 dark:bg-gray-900 my-1"></div>
 
+                            <!-- DÉCONNEXION -->
                             <form method="POST" action="{{ route('logout') }}">
 
                                 @csrf
 
                                 <button type="submit"
                                         class="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-500 hover:bg-rose-500/10 transition">
+
+                                    <svg class="w-4 h-4 shrink-0"
+                                         fill="none"
+                                         viewBox="0 0 24 24"
+                                         stroke="currentColor"
+                                         stroke-width="2">
+
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15"/>
+
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              d="M18 8.25L21.75 12 18 15.75M21.75 12H9"/>
+
+                                    </svg>
 
                                     Déconnexion
 
