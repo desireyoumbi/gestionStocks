@@ -6,217 +6,218 @@
 
 <div class="max-w-3xl mx-auto px-4 py-8">
 
-    <!-- En-tête avec retour -->
-    <div class="flex items-center gap-3 mb-6">
+```
+<!-- En-tête avec retour -->
+<div class="flex items-center gap-3 mb-6">
 
-        <a href="{{ route('purchase_orders.show', $purchaseOrder) }}"
-           class="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition shadow-sm">
+    <a href="{{ route('purchase_orders.show', $purchaseOrder) }}"
+       class="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition shadow-sm">
 
-            <svg class="w-5 h-5"
-                 fill="none"
-                 viewBox="0 0 24 24"
-                 stroke="currentColor"
-                 stroke-width="2">
+        <svg class="w-5 h-5"
+             fill="none"
+             viewBox="0 0 24 24"
+             stroke="currentColor"
+             stroke-width="2">
 
-                <path stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            <path stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18" />
 
-            </svg>
+        </svg>
 
-        </a>
+    </a>
 
-        <div>
+    <div>
 
-            <h1 class="text-2xl font-bold text-slate-900">
-                Modifier la commande #{{ $purchaseOrder->id }}
-            </h1>
+        <h1 class="text-2xl font-bold text-slate-900">
+            Modifier la commande #{{ $purchaseOrder->id }}
+        </h1>
 
-            <p class="text-xs text-slate-400 mt-0.5">
-                Mettez à jour les informations et les produits de cette commande
-            </p>
-
-        </div>
-
-    </div>
-
-
-    <!-- Gestion des erreurs -->
-    @if ($errors->any())
-
-        <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-2xl mb-6 shadow-md">
-
-            <ul class="list-disc list-inside space-y-0.5">
-
-                @foreach ($errors->all() as $error)
-
-                    <li>
-                        {{ $error }}
-                    </li>
-
-                @endforeach
-
-            </ul>
-
-        </div>
-
-    @endif
-
-
-    <!-- Formulaire -->
-    <div class="bg-white border border-slate-100 rounded-3xl shadow-2xl p-8">
-
-        <form method="POST"
-              action="{{ route('purchase_orders.update', $purchaseOrder) }}"
-              id="orderForm"
-              class="space-y-6">
-
-            @csrf
-            @method('PUT')
-
-
-            <!-- Fournisseur -->
-            <div>
-
-                <label for="supplier_id"
-                       class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-
-                    Fournisseur *
-
-                </label>
-
-
-                <select name="supplier_id"
-                        id="supplier_id"
-                        required
-                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
-
-                    <option value="">
-                        Sélectionner un fournisseur
-                    </option>
-
-
-                    @foreach($suppliers as $supplier)
-
-                        <option value="{{ $supplier->id }}"
-                            {{ old('supplier_id', $purchaseOrder->supplier_id) == $supplier->id ? 'selected' : '' }}>
-
-                            {{ $supplier->name }}
-
-                        </option>
-
-                    @endforeach
-
-                </select>
-
-
-                <!-- Information fournisseur -->
-                <p id="supplierInfo"
-                   class="text-xs text-slate-400 mt-2">
-                </p>
-
-            </div>
-
-
-            <!-- Produits commandés -->
-            <div>
-
-                <div class="flex items-center justify-between mb-3">
-
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-
-                        Produits commandés
-
-                    </label>
-
-
-                    <button type="button"
-                            id="addLineBtn"
-                            class="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed">
-
-                        <svg class="w-3.5 h-3.5"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor"
-                             stroke-width="2">
-
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  d="M12 4v16m8-8H4" />
-
-                        </svg>
-
-                        Ajouter une ligne
-
-                    </button>
-
-                </div>
-
-
-                <!-- Message aucun produit -->
-                <p id="noProductsMsg"
-                   class="text-xs text-amber-600 mt-2 hidden">
-
-                    Ce fournisseur ne possède aucun produit associé.
-
-                </p>
-
-
-                <!-- Lignes -->
-                <div id="linesContainer"
-                     class="space-y-3">
-                </div>
-
-            </div>
-
-
-            <!-- Pied du formulaire -->
-            <div class="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-slate-100 gap-4">
-
-                <!-- Total -->
-                <div class="text-sm font-medium text-slate-600 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 w-full sm:w-auto text-center sm:text-left">
-
-                    Total estimé :
-
-                    <span id="totalDisplay"
-                          class="font-bold text-slate-900">
-
-                        0 FCFA
-
-                    </span>
-
-                </div>
-
-
-                <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-
-                    <a href="{{ route('purchase_orders.show', $purchaseOrder) }}"
-                       class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-3 rounded-xl transition text-sm">
-
-                        Annuler
-
-                    </a>
-
-
-                    <button type="submit"
-                            id="submitBtn"
-                            disabled
-                            class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6 py-3 rounded-xl transition shadow-md hover:shadow-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed">
-
-                        Enregistrer les modifications
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        </form>
+        <p class="text-xs text-slate-400 mt-0.5">
+            Mettez à jour les informations et les produits de cette commande
+        </p>
 
     </div>
 
 </div>
 
+
+<!-- Gestion des erreurs -->
+@if ($errors->any())
+
+    <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-2xl mb-6 shadow-md">
+
+        <ul class="list-disc list-inside space-y-0.5">
+
+            @foreach ($errors->all() as $error)
+
+                <li>
+                    {{ $error }}
+                </li>
+
+            @endforeach
+
+        </ul>
+
+    </div>
+
+@endif
+
+
+<!-- Formulaire -->
+<div class="bg-white border border-slate-100 rounded-3xl shadow-2xl p-8">
+
+    <form method="POST"
+          action="{{ route('purchase_orders.update', $purchaseOrder) }}"
+          id="orderForm"
+          class="space-y-6">
+
+        @csrf
+        @method('PUT')
+
+
+        <!-- Fournisseur -->
+        <div>
+
+            <label for="supplier_id"
+                   class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+
+                Fournisseur *
+
+            </label>
+
+
+            <select name="supplier_id"
+                    id="supplier_id"
+                    required
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
+
+                <option value="">
+                    Sélectionner un fournisseur
+                </option>
+
+
+                @foreach($suppliers as $supplier)
+
+                    <option value="{{ $supplier->id }}"
+                        {{ old('supplier_id', $purchaseOrder->supplier_id) == $supplier->id ? 'selected' : '' }}>
+
+                        {{ $supplier->name }}
+
+                    </option>
+
+                @endforeach
+
+            </select>
+
+
+            <!-- Information fournisseur -->
+            <p id="supplierInfo"
+               class="text-xs text-slate-400 mt-2">
+            </p>
+
+        </div>
+
+
+        <!-- Produits commandés -->
+        <div>
+
+            <div class="flex items-center justify-between mb-3">
+
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+
+                    Produits commandés
+
+                </label>
+
+
+                <button type="button"
+                        id="addLineBtn"
+                        class="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed">
+
+                    <svg class="w-3.5 h-3.5"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="2">
+
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M12 4v16m8-8H4" />
+
+                    </svg>
+
+                    Ajouter une ligne
+
+                </button>
+
+            </div>
+
+
+            <!-- Message aucun produit -->
+            <p id="noProductsMsg"
+               class="text-xs text-amber-600 mt-2 hidden">
+
+                Ce fournisseur ne possède aucun produit associé.
+
+            </p>
+
+
+            <!-- Lignes -->
+            <div id="linesContainer"
+                 class="space-y-3">
+            </div>
+
+        </div>
+
+
+        <!-- Pied du formulaire -->
+        <div class="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-slate-100 gap-4">
+
+            <!-- Total -->
+            <div class="text-sm font-medium text-slate-600 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 w-full sm:w-auto text-center sm:text-left">
+
+                Total estimé :
+
+                <span id="totalDisplay"
+                      class="font-bold text-slate-900">
+
+                    0 FCFA
+
+                </span>
+
+            </div>
+
+
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+
+                <a href="{{ route('purchase_orders.show', $purchaseOrder) }}"
+                   class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-3 rounded-xl transition text-sm">
+
+                    Annuler
+
+                </a>
+
+
+                <button type="submit"
+                        id="submitBtn"
+                        disabled
+                        class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6 py-3 rounded-xl transition shadow-md hover:shadow-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+
+                    Enregistrer les modifications
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+```
+
+</div>
 
 <script>
 
@@ -225,35 +226,12 @@
     | FOURNISSEURS + PRODUITS
     |--------------------------------------------------------------------------
     |
-    | Le contrôleur charge chaque fournisseur avec ses produits.
+    | Les données sont préparées dans le contrôleur.
+    | On évite les map() PHP complexes directement dans @json().
     |
     */
 
-    const suppliers = @json(
-        $suppliers->map(function ($supplier) {
-
-            return [
-                'id' => $supplier->id,
-
-                'name' => $supplier->name,
-
-                'products' => $supplier->products->map(function ($product) {
-
-                    return [
-                        'id' => $product->id,
-
-                        'name' => $product->name,
-
-                        'purchase_price' =>
-                            $product->purchase_price,
-                    ];
-
-                })->values(),
-            ];
-
-        })->values()
-    );
-
+    const suppliers = @json($supplierData);
 
     /*
     |--------------------------------------------------------------------------
@@ -261,19 +239,7 @@
     |--------------------------------------------------------------------------
     */
 
-    const existingLines = @json(
-        $purchaseOrder->products->map(function ($product) {
-
-            return [
-                'id' => $product->id,
-
-                'qty' => $product->pivot->qty,
-
-                'unit_price' => $product->pivot->unit_price,
-            ];
-
-        })->values()
-    );
+    const existingLines = @json($existingLines);
 
 
     const supplierSelect =
@@ -315,8 +281,7 @@
 
         return suppliers.find(
             supplier =>
-                String(supplier.id)
-                === String(supplierId)
+                String(supplier.id) === String(supplierId)
         ) || null;
     }
 
@@ -390,8 +355,7 @@
                 products.map(product => {
 
                     const selected =
-                        String(product.id)
-                        === String(selectedId)
+                        String(product.id) === String(selectedId)
                             ? 'selected'
                             : '';
 
@@ -428,9 +392,7 @@
 
 
         if (!supplier) {
-
             return;
-
         }
 
 
@@ -561,14 +523,9 @@
                     );
 
 
-                /*
-                 * Si l'utilisateur choisit
-                 * un nouveau produit, on propose
-                 * son prix d'achat.
-                 */
                 if (
-                    price !== null
-                    && price !== ''
+                    price !== null &&
+                    price !== ''
                 ) {
 
                     priceInput.value =
@@ -685,8 +642,8 @@
         selects.forEach(select => {
 
             if (
-                String(select.value)
-                === String(selectedValue)
+                String(select.value) ===
+                String(selectedValue)
             ) {
 
                 count++;
@@ -719,10 +676,10 @@
                         '.price-input'
                     );
 
+
                 if (priceInput) {
 
-                    priceInput.value =
-                        '';
+                    priceInput.value = '';
 
                 }
 
@@ -748,6 +705,7 @@
         /*
          * On vide les anciennes lignes.
          */
+
         linesContainer.innerHTML = '';
 
         lineIndex = 0;
@@ -756,6 +714,7 @@
         /*
          * Aucun fournisseur.
          */
+
         if (!supplier) {
 
             addLineBtn.disabled = true;
@@ -782,6 +741,7 @@
         /*
          * Information fournisseur.
          */
+
         supplierInfo.textContent =
             `${products.length} produit(s) disponible(s) chez ${supplier.name}.`;
 
@@ -789,6 +749,7 @@
         /*
          * Aucun produit.
          */
+
         if (products.length === 0) {
 
             addLineBtn.disabled = true;
@@ -809,6 +770,7 @@
         /*
          * Produits disponibles.
          */
+
         noProductsMsg.classList.add(
             'hidden'
         );
@@ -817,10 +779,9 @@
 
 
         /*
-         * Lorsqu'on change réellement
-         * de fournisseur, on crée une
-         * nouvelle ligne vide.
+         * Nouvelle ligne vide.
          */
+
         addLine();
 
 
@@ -895,13 +856,13 @@
 
 
             if (
-                !select.value
-                || !qty
-                || !qty.value
-                || Number(qty.value) < 1
-                || !price
-                || price.value === ''
-                || Number(price.value) < 0
+                !select.value ||
+                !qty ||
+                !qty.value ||
+                Number(qty.value) < 1 ||
+                !price ||
+                price.value === '' ||
+                Number(price.value) < 0
             ) {
 
                 valid = false;
@@ -1031,6 +992,7 @@
              * On récupère les lignes existantes
              * uniquement lors du chargement initial.
              */
+
             if (existingLines.length > 0) {
 
                 existingLines.forEach(
