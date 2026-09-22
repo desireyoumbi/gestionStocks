@@ -32,8 +32,8 @@ class TrashController extends Controller
      */
     protected function ensureIsAdmin(): void
     {
-        if (Auth::user()->role !== 'administrateur') {
-            abort(403, "Seul un administrateur peut accéder à la corbeille.");
+        if (Auth::user()->role == 'vendeur') {
+            abort(403, "Seul un administrateur ou vice administrateur peut accéder à la corbeille.");
         }
     }
 
