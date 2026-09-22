@@ -70,7 +70,18 @@
                         @if(!empty($boutique->logo))
 
                             @php
-                                $logoUrl = 'https://xgvcyiaflsawvfmjuoxx.supabase.co/storage/v1/object/public/products/' . ltrim($boutique->logo, '/');
+                                /*
+                                 * Logo stocké localement sur Hostinger.
+                                 *
+                                 * Les logos sont enregistrés dans :
+                                 * public_html/storage/logos/
+                                 *
+                                 * Exemple :
+                                 * /storage/logos/abc123.jpg
+                                 */
+                                $logoUrl = asset(
+                                    'storage/' . ltrim($boutique->logo, '/')
+                                );
                             @endphp
 
                             <img src="{{ $logoUrl }}"

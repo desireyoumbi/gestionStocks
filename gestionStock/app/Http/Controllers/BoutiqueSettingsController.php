@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class BoutiqueSettingsController extends Controller
@@ -58,23 +57,32 @@ class BoutiqueSettingsController extends Controller
 
         /*
          * ============================================================
-         * GESTION DU LOGO → SUPABASE STORAGE
+         * GESTION DU LOGO → STOCKAGE LOCAL HOSTINGER
          * ============================================================
+         *
+         * Les logos sont enregistrés dans :
+         * public_html/storage/logos/
+         *
+         * Le disque "public" est configuré pour utiliser :
+         * storage/app/public/
+         *
+         * avec l'accès public configuré vers :
+         * public_html/storage/
          */
         if ($request->hasFile('logo')) {
 
-            // Supprimer l'ancien logo de Supabase
+            // Supprimer l'ancien logo du stockage local
             if (
                 $boutique->logo &&
-                Storage::disk('s3')->exists($boutique->logo)
+                Storage::disk('public')->exists($boutique->logo)
             ) {
-                Storage::disk('s3')->delete($boutique->logo);
+                Storage::disk('public')->delete($boutique->logo);
             }
 
-            // Enregistrer le nouveau logo dans Supabase
+            // Enregistrer le nouveau logo dans storage/logos/
             $path = $request
                 ->file('logo')
-                ->store('logos', 's3');
+                ->store('logos', 'public');
 
             $data['logo'] = $path;
         }
@@ -112,17 +120,17 @@ class BoutiqueSettingsController extends Controller
 
         /*
          * ============================================================
-         * SUPPRESSION DU LOGO DE SUPABASE
+         * SUPPRESSION DU LOGO → STOCKAGE LOCAL HOSTINGER
          * ============================================================
          *
          * Avant de supprimer la boutique de la base de données,
-         * on supprime également son logo dans Supabase Storage.
+         * on supprime également son logo du stockage local.
          */
         if (
             $boutique->logo &&
-            Storage::disk('s3')->exists($boutique->logo)
+            Storage::disk('public')->exists($boutique->logo)
         ) {
-            Storage::disk('s3')->delete($boutique->logo);
+            Storage::disk('public')->delete($boutique->logo);
         }
 
         User::where(

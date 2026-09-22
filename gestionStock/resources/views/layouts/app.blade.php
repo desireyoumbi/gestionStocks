@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ Auth::user()->boutique->nom ?? 'E-Stockly' }}</title>
 
-     <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/manifest.json">
 
     <meta name="theme-color" content="#0a1a3a">
 
@@ -16,14 +16,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
-        tailwind.config = { darkMode: 'class', }
+        tailwind.config = {
+            darkMode: 'class',
+        }
     </script>
 
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     @php
-        // Récupération de la couleur personnalisée de la boutique
-        $primaryColor = Auth::user()->boutique->primary_color ?? '#f59e0b';
+        $boutique = Auth::user()->boutique ?? null;
+        $primaryColor = $boutique->primary_color ?? '#f59e0b';
     @endphp
 
     <style>
@@ -52,7 +54,6 @@
             scrollbar-width: none;
         }
 
-        /* --- CORRECTION GLOBALE DU MODE SOMBRE POUR LES FORMULAIRES --- */
         html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
         html.dark select,
         html.dark textarea {
@@ -61,7 +62,6 @@
             border-color: #374151 !important;
         }
 
-        /* Correction des placeholders en mode dark */
         html.dark input::placeholder,
         html.dark textarea::placeholder {
             color: #9ca3af !important;
@@ -88,25 +88,40 @@
                 <div class="p-5 shrink-0 flex items-center justify-between">
 
                     @php
-                        $boutique = Auth::user()->boutique ?? null;
                         $shopName = $boutique->nom ?? 'E-Stockly';
 
                         $words = explode(' ', trim($shopName));
 
                         $initials = count($words) >= 2
-                            ? strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1))
+                            ? strtoupper(
+                                substr($words[0], 0, 1) .
+                                substr($words[1], 0, 1)
+                            )
                             : strtoupper(substr($shopName, 0, 2));
 
                         /*
-                         * URL publique du logo stocké dans Supabase Storage.
+                         * Logo de la boutique.
                          *
-                         * Le bucket utilisé est "products".
-                         * Les logos sont enregistrés dans le dossier "logos/".
+                         * Les logos sont maintenant stockés sur
+                         * le stockage public de Hostinger :
+                         *
+                         * public_html/storage/logos/
+                         *
+                         * La valeur enregistrée en base est par exemple :
+                         *
+                         * logos/abc123.jpg
+                         *
+                         * On construit donc simplement l'URL publique
+                         * Laravel :
+                         *
+                         * /storage/logos/abc123.jpg
                          */
                         $logoUrl = null;
 
                         if (!empty($boutique->logo)) {
-                            $logoUrl = 'https://xgvcyiaflsawvfmjuoxx.supabase.co/storage/v1/object/public/products/' . ltrim($boutique->logo, '/');
+                            $logoUrl = asset(
+                                'storage/' . ltrim($boutique->logo, '/')
+                            );
                         }
                     @endphp
 
@@ -115,22 +130,27 @@
                         @if(!empty($boutique->logo))
 
                             <img src="{{ $logoUrl }}"
-                                 alt="Logo"
+                                 alt="Logo de {{ $shopName }}"
                                  class="w-10 h-10 rounded-xl object-cover border border-gray-800 shrink-0 shadow-md">
 
                         @else
 
                             <div class="bg-amber-500 text-gray-900 w-10 h-10 rounded-xl font-black flex items-center justify-center text-sm shrink-0 shadow-md"
                                  style="background-color: var(--primary);">
+
                                 {{ $initials }}
+
                             </div>
 
                         @endif
 
                         <span class="text-white font-bold text-base tracking-wide truncate"
                               title="{{ $shopName }}">
+
                             {{ $shopName }}
+
                         </span>
+
                     </div>
 
                     <!-- Bouton fermeture mobile -->
@@ -176,6 +196,7 @@
                             </svg>
 
                             Tableau de bord
+
                         </a>
 
                         <!-- Catégories -->
@@ -196,6 +217,7 @@
                             </svg>
 
                             Catégories
+
                         </a>
 
                         <!-- Produits -->
@@ -216,6 +238,7 @@
                             </svg>
 
                             Produits
+
                         </a>
 
                         <!-- Approvisionnements -->
@@ -236,6 +259,7 @@
                             </svg>
 
                             Approvisionnements
+
                         </a>
 
                         <!-- Commandes -->
@@ -256,6 +280,7 @@
                             </svg>
 
                             Commandes
+
                         </a>
 
                         <!-- Ventes -->
@@ -276,6 +301,7 @@
                             </svg>
 
                             Ventes
+
                         </a>
 
                         <!-- Ajustements -->
@@ -296,6 +322,7 @@
                             </svg>
 
                             Ajustements
+
                         </a>
 
                         <!-- Mouvements -->
@@ -316,6 +343,7 @@
                             </svg>
 
                             Mouvements
+
                         </a>
 
                         <!-- Dépenses -->
@@ -338,6 +366,7 @@
                                 </svg>
 
                                 Dépenses
+
                             </a>
 
                         @endif
@@ -362,6 +391,7 @@
                                 </svg>
 
                                 Historique
+
                             </a>
 
                         @endif
@@ -386,6 +416,7 @@
                                 </svg>
 
                                 Utilisateurs
+
                             </a>
 
                         @endif
@@ -410,6 +441,7 @@
                                 </svg>
 
                                 Fournisseurs
+
                             </a>
 
                         @endif
@@ -429,13 +461,14 @@
 
                                     <path stroke-linecap="round"
                                           stroke-linejoin="round"
-                                          d="M11.983 2.5a1.5 1.5 0 00-1.414 1.05l-.26 1.042a8.01 8.01 0 00-1.57.906l-.976-.462a1.5 1.5 0 00-1.815.534l-1.5 2.598a1.5 1.5 0 00.27 1.834l.79.728a7.928 7.928 0 000 1.812l-.79.728a1.5 1.5 0 00-.27 1.834l1.5 2.598a1.5 1.5 0 001.815.534l.976-.462a8.01 8.01 0 001.57.906l.26 1.042a1.5 1.5 0 001.414 1.05h3.034a1.5 1.5 0 001.414-1.05l.26-1.042a8.01 8.01 0 001.57-.906l.976.462a1.5 1.5 0 001.815-.534l1.5-2.598a1.5 1.5 0 00-.27-1.834l-.79-.728a7.928 7.928 0 000-1.812l.79-.728a1.5 1.5 0 00-.27-1.834l-1.5-2.598a1.5 1.5 0 001.815-.534l.976.462a8.01 8.01 0 001.57.906l-.26-1.042a1.5 1.5 0 00-1.414-1.05h-3.034z" />
+                                          d="M11.983 2.5a1.5 1.5 0 00-1.414 1.05l-.26 1.042a8.01 8.01 0 00-1.57.906l-.976-.462a1.5 1.5 0 00-1.815.534l-.79.728a7.928 7.928 0 000 1.812l.79.728a1.5 1.5 0 00-.27 1.834l1.5 2.598a1.5 1.5 0 001.815.534l.976-.462a8.01 8.01 0 001.57.906l.26 1.042a1.5 1.5 0 001.414 1.05h3.034a1.5 1.5 0 001.414-1.05l.26-1.042a8.01 8.01 0 001.57-.906l.976.462a1.5 1.5 0 001.815-.534l1.5-2.598a1.5 1.5 0 00-.27-1.834l-.79-.728a7.928 7.928 0 000-1.812l.79-.728a1.5 1.5 0 00.27-1.834l-1.5-2.598a1.5 1.5 0 00-1.815-.534l-.976.462a8.01 8.01 0 00-1.57-.906l-.26-1.042a1.5 1.5 0 00-1.414-1.05h-3.034z" />
 
                                     <circle cx="12" cy="12" r="3" />
 
                                 </svg>
 
                                 Paramètres
+
                             </a>
 
                         @endif
@@ -460,11 +493,13 @@
                                 </svg>
 
                                 Corbeille
+
                             </a>
 
                         @endif
 
                     </nav>
+
                 </div>
 
                 <!-- 3. BAS FIXE -->
@@ -501,19 +536,8 @@
                                 onclick="setTheme('light')"
                                 class="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs text-gray-400 hover:text-white">
 
-                            <svg class="w-4 h-4"
-                                 fill="none"
-                                 viewBox="0 0 24 24"
-                                 stroke="currentColor"
-                                 stroke-width="2">
-
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-
-                            </svg>
-
                             Clair
+
                         </button>
 
                         <button type="button"
@@ -521,42 +545,21 @@
                                 onclick="setTheme('dark')"
                                 class="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs text-gray-400 hover:text-white">
 
-                            <svg class="w-4 h-4"
-                                 fill="none"
-                                 viewBox="0 0 24 24"
-                                 stroke="currentColor"
-                                 stroke-width="2">
-
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-
-                            </svg>
-
                             Sombre
+
                         </button>
 
                     </div>
 
                     <form method="POST" action="{{ route('logout') }}">
+
                         @csrf
 
                         <button type="submit"
                                 class="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium text-red-400 hover:bg-red-500/15 transition shadow-sm">
 
-                            <svg class="w-4 h-4"
-                                 fill="none"
-                                 viewBox="0 0 24 24"
-                                 stroke="currentColor"
-                                 stroke-width="2">
-
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-
-                            </svg>
-
                             Déconnexion
+
                         </button>
 
                     </form>
@@ -592,13 +595,19 @@
                         </button>
 
                         <div>
+
                             <span class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+
                                 @yield('header_subtitle', 'Espace de Gestion')
+
                             </span>
 
                             <h1 class="text-base font-bold text-gray-900 dark:text-white">
+
                                 @yield('header_title', 'Tableau de bord')
+
                             </h1>
+
                         </div>
 
                     </div>
@@ -607,6 +616,7 @@
                     <div class="flex items-center gap-3">
 
                         @php
+
                             $unreadCount = \App\Models\Notification::where('user_id', Auth::id())
                                 ->whereNull('read_at')
                                 ->count();
@@ -617,6 +627,7 @@
                             )
                             ->where('quantity', 0)
                             ->count();
+
                         @endphp
 
                         <!-- SCAN -->
@@ -625,21 +636,7 @@
                            style="background-color: var(--primary);"
                            title="Scan rapide / Mode Douchette">
 
-                            <svg class="w-4 h-4 shrink-0"
-                                 fill="none"
-                                 viewBox="0 0 24 24"
-                                 stroke="currentColor"
-                                 stroke-width="2">
-
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 01-1-1H5a1 1 0 01-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 01-1 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5v2a1 1 0 001 1z" />
-
-                            </svg>
-
-                            <span class="hidden md:inline">
-                                Scan & Stock
-                            </span>
+                            Scan & Stock
 
                         </a>
 
@@ -650,18 +647,6 @@
                                     onclick="playStockAlertSound(true)"
                                     class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs font-bold animate-pulse hover:bg-rose-500/20 transition"
                                     title="Cliquez pour rejouer l'alerte sonore">
-
-                                <svg class="w-4 h-4"
-                                     fill="none"
-                                     viewBox="0 0 24 24"
-                                     stroke="currentColor"
-                                     stroke-width="2">
-
-                                    <path stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-
-                                </svg>
 
                                 Alerte Stock ({{ $outOfStockCount }})
 
@@ -716,11 +701,15 @@
                                 <div class="hidden sm:block text-left">
 
                                     <span class="block text-xs font-bold text-gray-900 dark:text-white leading-tight">
+
                                         {{ Auth::user()->name ?? 'Utilisateur' }}
+
                                     </span>
 
                                     <span class="block text-[10px] text-gray-400 leading-tight">
+
                                         Connecté
+
                                     </span>
 
                                 </div>
@@ -742,31 +731,15 @@
 
                             <div x-show="open"
                                  @click.away="open = false"
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="transform opacity-0 scale-95"
-                                 x-transition:enter-end="transform opacity-100 scale-100"
-                                 x-transition:leave="transition ease-in duration-75"
-                                 x-transition:leave-start="transform opacity-100 scale-100"
-                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 x-transition
                                  class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl py-1.5 z-50"
                                  style="display: none;">
 
                                 <a href="{{ route('profile.edit') }}"
                                    class="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900 transition">
 
-                                    <svg class="w-4 h-4 text-gray-400"
-                                         fill="none"
-                                         viewBox="0 0 24 24"
-                                         stroke="currentColor"
-                                         stroke-width="2">
-
-                                        <path stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-
-                                    </svg>
-
                                     Mon Profil
+
                                 </a>
 
                                 @if(Auth::user()->role !== 'vendeur')
@@ -774,21 +747,8 @@
                                     <a href="{{ route('settings.boutique') }}"
                                        class="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900 transition">
 
-                                        <svg class="w-4 h-4 text-gray-400"
-                                             fill="none"
-                                             viewBox="0 0 24 24"
-                                             stroke="currentColor"
-                                             stroke-width="2">
-
-                                            <path stroke-linecap="round"
-                                                  stroke-linejoin="round"
-                                                  d="M11.983 2.5a1.5 1.5 0 00-1.414 1.05l-.26 1.042a8.01 8.01 0 00-1.57.906l-.976-.462a1.5 1.5 0 00-1.815.534l-1.5 2.598a1.5 1.5 0 00.27 1.834l.79.728a7.928 7.928 0 000 1.812l-.79.728a1.5 1.5 0 00-.27 1.834l1.5 2.598a1.5 1.5 0 001.815.534l.976-.462a8.01 8.01 0 001.57.906l.26 1.042a1.5 1.5 0 001.414 1.05h3.034a1.5 1.5 0 001.414-1.05l.26-1.042a8.01 8.01 0 001.57-.906l.976.462a1.5 1.5 0 001.815-.534l1.5-2.598a1.5 1.5 0 00-.27-1.834l-.79-.728a7.928 7.928 0 000-1.812l.79-.728a1.5 1.5 0 00-.27-1.834l-1.5-2.598a1.5 1.5 0 001.815-.534l.976.462a8.01 8.01 0 001.57.906l-.26-1.042a1.5 1.5 0 00-1.414-1.05h-3.034z" />
-
-                                            <circle cx="12" cy="12" r="3" />
-
-                                        </svg>
-
                                         Paramètres
+
                                     </a>
 
                                 @endif
@@ -796,24 +756,14 @@
                                 <div class="h-px bg-gray-100 dark:bg-gray-900 my-1"></div>
 
                                 <form method="POST" action="{{ route('logout') }}">
+
                                     @csrf
 
                                     <button type="submit"
                                             class="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-500 hover:bg-rose-500/10 transition">
 
-                                        <svg class="w-4 h-4"
-                                             fill="none"
-                                             viewBox="0 0 24 24"
-                                             stroke="currentColor"
-                                             stroke-width="2">
-
-                                            <path stroke-linecap="round"
-                                                  stroke-linejoin="round"
-                                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-
-                                        </svg>
-
                                         Déconnexion
+
                                     </button>
 
                                 </form>
@@ -833,18 +783,6 @@
 
                         <div class="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-sm">
 
-                            <svg class="w-5 h-5 shrink-0"
-                                 fill="none"
-                                 viewBox="0 0 24 24"
-                                 stroke="currentColor"
-                                 stroke-width="2">
-
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-
-                            </svg>
-
                             <span>{{ session('success') }}</span>
 
                         </div>
@@ -855,18 +793,6 @@
 
                         <div class="flex items-center gap-3 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold shadow-sm">
 
-                            <svg class="w-5 h-5 shrink-0"
-                                 fill="none"
-                                 viewBox="0 0 24 24"
-                                 stroke="currentColor"
-                                 stroke-width="2">
-
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-
-                            </svg>
-
                             <span>{{ session('error') }}</span>
 
                         </div>
@@ -876,12 +802,15 @@
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+
                     @yield('content')
+
                 </div>
 
             </main>
 
         </div>
+
     </div>
 
     <!-- POPUP CODE UTILISATEUR -->
@@ -892,33 +821,13 @@
 
             <div class="bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full mx-auto transform transition-all space-y-5 text-center">
 
-                <div class="flex items-center justify-center w-14 h-14 mx-auto bg-amber-500/10 text-amber-500 rounded-2xl border border-amber-500/20 shadow-inner">
+                <h3 class="text-lg font-bold text-white">
+                    ⚠️ TRÈS IMPORTANT
+                </h3>
 
-                    <svg class="w-7 h-7"
-                         fill="none"
-                         viewBox="0 0 24 24"
-                         stroke="currentColor"
-                         stroke-width="2">
-
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-
-                    </svg>
-
-                </div>
-
-                <div class="space-y-2">
-
-                    <h3 class="text-lg font-bold text-white">
-                        ⚠️ TRÈS IMPORTANT
-                    </h3>
-
-                    <p class="text-xs text-gray-400">
-                        Voici le code d'accès unique généré pour le nouvel utilisateur. Notez-le bien, il ne sera plus affiché.
-                    </p>
-
-                </div>
+                <p class="text-xs text-gray-400">
+                    Voici le code d'accès unique généré pour le nouvel utilisateur. Notez-le bien, il ne sera plus affiché.
+                </p>
 
                 <div class="p-4 bg-gray-950 border border-gray-800 rounded-2xl font-mono text-xl font-bold tracking-widest text-amber-500"
                      style="color: var(--primary);">
@@ -935,19 +844,7 @@
                         @csrf
 
                         <button type="submit"
-                                class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs rounded-xl transition border border-gray-700 flex items-center justify-center gap-2">
-
-                            <svg class="w-4 h-4"
-                                 fill="none"
-                                 viewBox="0 0 24 24"
-                                 stroke="currentColor"
-                                 stroke-width="2">
-
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5v10a2 2 0 002 2z" />
-
-                            </svg>
+                                class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs rounded-xl transition border border-gray-700">
 
                             Envoyer par email
 
@@ -973,7 +870,6 @@
 
     <script>
 
-        // Fonction globale pour basculer le thème
         function setTheme(theme) {
 
             const html = document.documentElement;
@@ -993,6 +889,7 @@
 
                     darkBtn.className =
                         "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs bg-gray-800 text-white font-semibold shadow-sm";
+
                 }
 
             } else {
@@ -1008,18 +905,19 @@
 
                     darkBtn.className =
                         "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all duration-150 text-xs text-gray-400 hover:text-white";
+
                 }
+
             }
+
         }
 
-        // Initialisation du thème
         document.addEventListener('DOMContentLoaded', () => {
 
             const savedTheme = localStorage.getItem('theme') || 'dark';
 
             setTheme(savedTheme);
 
-            // --- SIDEBAR MOBILE ---
             const sidebar = document.getElementById('app-sidebar');
             const overlay = document.getElementById('sidebar-overlay');
             const hamburgerBtn = document.getElementById('hamburger-btn');
@@ -1055,51 +953,21 @@
 
     </script>
 
-    <!-- ========================================================= -->
     <!-- PWA INSTALLATION -->
-    <!-- ========================================================= -->
     <script>
 
-        /*
-         * Événement fourni par le navigateur lorsque
-         * l'application peut être installée.
-         */
         let deferredPrompt = null;
 
         window.addEventListener('beforeinstallprompt', function (event) {
 
-            console.log('E-Stockly : prompt PWA disponible.');
-
-            /*
-             * Empêche le navigateur d'afficher automatiquement
-             * son propre prompt.
-             */
             event.preventDefault();
 
-            /*
-             * On conserve l'événement pour le bouton
-             * "Installer l'application".
-             */
             deferredPrompt = event;
 
         });
 
-
-        /*
-         * Fonction globale utilisée par le bouton :
-         *
-         * onclick="installPwaApp()"
-         */
         window.installPwaApp = async function () {
 
-            console.log(
-                "E-Stockly : clic sur Installer l'application."
-            );
-
-            /*
-             * Si aucun prompt n'est actuellement disponible,
-             * on ne fait rien.
-             */
             if (!deferredPrompt) {
 
                 console.log(
@@ -1107,23 +975,15 @@
                 );
 
                 return;
+
             }
 
             try {
 
-                /*
-                 * On récupère le prompt actuel.
-                 */
                 const promptEvent = deferredPrompt;
 
-                /*
-                 * Affiche le prompt natif du navigateur.
-                 */
                 await promptEvent.prompt();
 
-                /*
-                 * Attend le choix de l'utilisateur.
-                 */
                 const choiceResult = await promptEvent.userChoice;
 
                 if (choiceResult.outcome === 'accepted') {
@@ -1135,14 +995,11 @@
                 } else {
 
                     console.log(
-                        "E-Stockly : installation annulée par l'utilisateur."
+                        "E-Stockly : installation annulée."
                     );
 
                 }
 
-                /*
-                 * Le prompt ne doit pas être réutilisé.
-                 */
                 deferredPrompt = null;
 
             } catch (error) {
@@ -1156,20 +1013,7 @@
 
         };
 
-
-        /*
-         * Confirmation réelle de l'installation.
-         *
-         * IMPORTANT :
-         * On ne cache PAS le bouton de la sidebar.
-         *
-         * Il reste donc toujours visible.
-         */
         window.addEventListener('appinstalled', function () {
-
-            console.log(
-                'E-Stockly : application installée avec succès.'
-            );
 
             deferredPrompt = null;
 
@@ -1177,9 +1021,7 @@
 
     </script>
 
-    <!-- ========================================================= -->
     <!-- SERVICE WORKER -->
-    <!-- ========================================================= -->
     <script>
 
         if ('serviceWorker' in navigator) {
@@ -1212,8 +1054,5 @@
 
     </script>
 
-
-
 </body>
 </html>
-

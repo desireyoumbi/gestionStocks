@@ -350,12 +350,11 @@
 
                                         @php
                                             /*
-                                             * Même formule que edit.blade.php (qui fonctionne) :
-                                             * le bucket Supabase s'appelle "products", ET le fichier
-                                             * est stocké dans un dossier "products/" à l'intérieur —
-                                             * d'où les deux segments "products" dans l'URL finale.
+                                             * Stockage local (disque "public") : Laravel construit
+                                             * l'URL lui-même à partir du lien symbolique storage/.
+                                             * Plus besoin de coder une URL Supabase en dur.
                                              */
-                                            $imageUrl = 'https://xgvcyiaflsawvfmjuoxx.supabase.co/storage/v1/object/public/products/' . ltrim($product->image, '/');
+                                            $imageUrl = asset('storage/' . $product->image);
                                         @endphp
 
                                         <img src="{{ $imageUrl }}"
@@ -365,7 +364,7 @@
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
 
 
-                                        {{-- Image par défaut si Supabase ne répond pas --}}
+                                        {{-- Image par défaut si le fichier local ne répond pas --}}
                                         <div style="display:none;"
                                              class="w-10 h-10 rounded-xl bg-gray-100 items-center justify-center text-gray-400 text-[10px] font-bold border border-gray-200">
 
@@ -717,9 +716,6 @@
 
 <script>
 
-    /*
-     * Ouvrir la modale image
-     */
     function openImageModal(imageUrl, title) {
 
         const modal = document.getElementById('imageModal');
@@ -734,10 +730,6 @@
 
     }
 
-
-    /*
-     * Fermer la modale image
-     */
     function closeImageModal() {
 
         const modal = document.getElementById('imageModal');
@@ -749,10 +741,6 @@
 
     }
 
-
-    /*
-     * Ouvrir le QR Code
-     */
     function openQrModalFromButton(button) {
 
         const name = button.getAttribute('data-name');
@@ -771,30 +759,18 @@
 
     }
 
-
-    /*
-     * Fermer le QR Code
-     */
     function closeQrModal() {
 
         document.getElementById('qrModal').classList.add('hidden');
 
     }
 
-
-    /*
-     * Impression du QR Code
-     */
     function printQrCode() {
 
         window.print();
 
     }
 
-
-    /*
-     * Touche Echap
-     */
     document.addEventListener('keydown', function(event) {
 
         if (event.key === 'Escape') {

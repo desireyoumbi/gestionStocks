@@ -24,21 +24,17 @@ class ProductController extends Controller
 
         $boutiqueId = Auth::user()->boutique_id;
 
-        // 1. Total des produits
         $totalProducts = Product::where('boutique_id', $boutiqueId)->count();
 
-        // 2. Valeur totale du stock (Quantité * Prix de vente)
         $stockValue = Product::where('boutique_id', $boutiqueId)
             ->selectRaw('SUM(quantity * selling_price) as total')
             ->value('total') ?? 0;
 
-        // 3. Stock faible (quantité > 0 mais <= seuil d'alerte)
         $lowStockCount = Product::where('boutique_id', $boutiqueId)
             ->where('quantity', '>', 0)
             ->whereColumn('quantity', '<=', 'alert_threshold')
             ->count();
 
-        // 4. Rupture de stock (quantité <= 0)
         $outOfStockCount = Product::where('boutique_id', $boutiqueId)
             ->where('quantity', '<=', 0)
             ->count();
@@ -46,7 +42,6 @@ class ProductController extends Controller
         $query = Product::where('boutique_id', $boutiqueId)
             ->with(['category']);
 
-        // Recherche textuelle sécurisée
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
@@ -54,12 +49,10 @@ class ProductController extends Controller
             });
         }
 
-        // Filtre par catégorie
         if ($categoryId) {
             $query->where('category_id', $categoryId);
         }
 
-        // Filtre par statut
         if ($status) {
             $query->where('status', $status);
         }
@@ -72,8 +65,6 @@ class ProductController extends Controller
             'status' => $status,
         ]);
 
-        // SÉCURITÉ : Si l'utilisateur n'est ni admin ni vice-admin,
-        // on cache le prix d'achat
         if (!in_array(Auth::user()->role, ['administrateur', 'vice_administrateur'])) {
             $products->getCollection()->each->makeHidden(['purchase_price']);
         }
@@ -91,9 +82,6 @@ class ProductController extends Controller
         ));
     }
 
-    /**
-     * Affiche le formulaire de création d'un produit.
-     */
     public function create()
     {
         if (Auth::user()->role === 'vendeur') {
@@ -117,7 +105,6 @@ class ProductController extends Controller
             abort(403, "Vous n'êtes pas autorisé à effectuer cette action.");
         }
 
-        // Validation
         $validated = $request->validate([
             'name' => 'required|string|max:255',
 
@@ -201,19 +188,22 @@ class ProductController extends Controller
 
             /*
              * ============================================================
-             * IMAGE → SUPABASE STORAGE
+             * IMAGE → STOCKAGE LOCAL (disque "public" de Laravel)
+             *
+             * Sur Hostinger, le disque est persistant : plus besoin
+             * d'un stockage externe comme Supabase (utile uniquement
+             * sur Render gratuit, dont le disque est éphémère).
              * ============================================================
              */
             if ($request->hasFile('image')) {
 
                 $validated['image'] = $request
                     ->file('image')
-                    ->store('products', 's3');
+                    ->store('products', 'public');
             }
 
             $initialQuantity = (int) $validated['quantity'];
 
-            // Le statut est toujours déduit automatiquement de la quantité
             $validated['status'] =
                 $initialQuantity > 0 ? 'disponible' : 'rupture';
 
@@ -242,9 +232,6 @@ class ProductController extends Controller
         });
     }
 
-    /**
-     * Affiche les détails d'un produit spécifique.
-     */
     public function show(Product $product)
     {
         if ($product->boutique_id !== Auth::user()->boutique_id) {
@@ -254,9 +241,6 @@ class ProductController extends Controller
         return view('products.show', compact('product'));
     }
 
-    /**
-     * Affiche le formulaire de modification d'un produit.
-     */
     public function edit(Product $product)
     {
         if ($product->boutique_id !== Auth::user()->boutique_id) {
@@ -345,7 +329,6 @@ class ProductController extends Controller
             unset($validated['purchase_price']);
         }
 
-        // Recalcul automatique du statut
         $newStockPreview = (int) $validated['quantity'];
 
         $validated['status'] =
@@ -359,24 +342,23 @@ class ProductController extends Controller
 
             /*
              * ============================================================
-             * NOUVELLE IMAGE → SUPABASE STORAGE
+             * NOUVELLE IMAGE → STOCKAGE LOCAL
              * ============================================================
              */
             if ($request->hasFile('image')) {
 
-                // Supprimer l'ancienne image de Supabase
+                // Supprimer l'ancienne image locale si elle existe
                 if (
                     $product->image &&
-                    Storage::disk('s3')->exists($product->image)
+                    Storage::disk('public')->exists($product->image)
                 ) {
 
-                    Storage::disk('s3')->delete($product->image);
+                    Storage::disk('public')->delete($product->image);
                 }
 
-                // Envoyer la nouvelle image dans Supabase
                 $validated['image'] = $request
                     ->file('image')
-                    ->store('products', 's3');
+                    ->store('products', 'public');
             }
 
             $validated['updated_by'] = Auth::id();
@@ -428,15 +410,15 @@ class ProductController extends Controller
 
         /*
          * ============================================================
-         * SUPPRESSION IMAGE → SUPABASE STORAGE
+         * SUPPRESSION IMAGE → STOCKAGE LOCAL
          * ============================================================
          */
         if (
             $product->image &&
-            Storage::disk('s3')->exists($product->image)
+            Storage::disk('public')->exists($product->image)
         ) {
 
-            Storage::disk('s3')->delete($product->image);
+            Storage::disk('public')->delete($product->image);
         }
 
         $product->delete();

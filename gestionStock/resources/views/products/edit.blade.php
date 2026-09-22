@@ -212,7 +212,11 @@
                 @if($product->image)
 
                     @php
-                        $imageUrl = 'https://xgvcyiaflsawvfmjuoxx.supabase.co/storage/v1/object/public/products/' . ltrim($product->image, '/');
+                        /*
+                         * Stockage local (disque "public") : Laravel construit
+                         * l'URL à partir du lien symbolique storage/.
+                         */
+                        $imageUrl = asset('storage/' . $product->image);
                     @endphp
 
                     <div class="flex items-center gap-4">
