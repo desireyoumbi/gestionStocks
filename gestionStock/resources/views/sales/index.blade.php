@@ -438,7 +438,7 @@
 
 @php
 
-```
+
 $sale = session('success_sale');
 
 $boutiqueName = 'E-STOCKY';
