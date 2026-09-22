@@ -128,11 +128,16 @@ Route::middleware(['auth', 'check.password'])->group(function () {
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
     Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
-    Route::delete('/sales/{id}', [SaleController::class, 'destroy'])->name('sales.destroy');
-    // Modifier un produit précis d'une vente 
-    Route::get('/sales/{saleId}/edit/{productId}', [SaleController::class, 'edit']) ->name('sales.edit'); 
-    // Enregistrer la modification du produit 
-    Route::put('/sales/{saleId}/edit/{productId}', [SaleController::class, 'update']) ->name('sales.update');
+
+    Route::delete('/sales/{id}', [SaleController::class, 'destroy'])
+        ->name('sales.destroy');
+
+    Route::get('/sales/{id}/edit', [SaleController::class, 'edit'])
+        ->name('sales.edit');
+
+    Route::put('/sales/{id}', [SaleController::class, 'update'])
+        ->name('sales.update');
+
     // Page dédiée aux Approvisionnements
     Route::get('/supplies/create', [SupplyController::class, 'create'])->name('supplies.create');
     Route::post('/supplies', [SupplyController::class, 'store'])->name('supplies.store');

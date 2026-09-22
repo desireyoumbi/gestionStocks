@@ -523,9 +523,9 @@ class SaleController extends Controller
 
 /**
  * Affiche le formulaire de modification
- * d'un seul produit d'une vente.
+ * de l'ensemble des produits d'une vente.
  */
-public function edit($saleId, $productId)
+public function edit($saleId)
 {
     $user = Auth::user();
     $boutiqueId = $user->boutique_id;
@@ -560,92 +560,97 @@ public function edit($saleId, $productId)
     }
 
     /*
-     * Récupérer uniquement le produit
-     * sélectionné dans cette vente.
+     * On envoie toute la vente à la vue.
+     *
+     * Aucun produit supplémentaire ne peut être ajouté
+     * depuis cette page.
      */
-    $product = $sale->products->firstWhere('id', $productId);
-
-    if (!$product) {
-        abort(
-            404,
-            'Ce produit ne fait pas partie de cette vente.'
-        );
-    }
-
-    /*
-     * Le produit contient également les informations
-     * de la ligne de vente via son pivot.
-     */
-    $saleItem = $product;
-
     return view(
         'sales.edit',
-        compact(
-            'sale',
-            'product',
-            'saleItem'
-        )
+        compact('sale')
     );
 }
 
 
 /**
- * Modifie uniquement un produit d'une vente.
+ * Modifie les lignes existantes d'une vente.
  *
- * Les autres produits de la même vente
- * restent totalement inchangés.
+ * Aucun produit ne peut être ajouté ou supprimé.
+ * Seules les quantités et les prix unitaires
+ * des produits déjà présents dans la vente
+ * peuvent être modifiés.
  */
-public function update(Request $request, $saleId, $productId)
+public function update(Request $request, $saleId)
 {
     $boutiqueId = Auth::user()->boutique_id;
+    $user = Auth::user();
 
+    /*
+     * Validation générale.
+     */
     $request->validate([
-        'quantity' => [
+        'items' => [
+            'required',
+            'array',
+        ],
+
+        'items.*' => [
+            'required',
+            'array',
+        ],
+
+        'items.*.quantity' => [
             'required',
             'integer',
             'min:1',
             'max:2147483647',
         ],
 
-        'unit_price' => [
+        'items.*.unit_price' => [
             'required',
             'numeric',
             'min:0',
             'max:999999999999999999.99',
         ],
     ], [
-        'quantity.required' =>
+
+        'items.required' =>
+            'Les produits de la vente sont obligatoires.',
+
+        'items.array' =>
+            'Les données de la vente sont invalides.',
+
+        'items.*.quantity.required' =>
             'La quantité est obligatoire.',
 
-        'quantity.integer' =>
+        'items.*.quantity.integer' =>
             'La quantité doit être un nombre entier.',
 
-        'quantity.min' =>
+        'items.*.quantity.min' =>
             'La quantité doit être supérieure à zéro.',
 
-        'quantity.max' =>
+        'items.*.quantity.max' =>
             'La quantité demandée est trop élevée.',
 
-        'unit_price.required' =>
+        'items.*.unit_price.required' =>
             'Le prix de vente est obligatoire.',
 
-        'unit_price.numeric' =>
+        'items.*.unit_price.numeric' =>
             'Le prix de vente doit être un nombre.',
 
-        'unit_price.min' =>
+        'items.*.unit_price.min' =>
             'Le prix de vente ne peut pas être négatif.',
     ]);
+
 
     try {
 
         DB::transaction(function () use (
             $request,
             $saleId,
-            $productId,
-            $boutiqueId
+            $boutiqueId,
+            $user
         ) {
-
-            $user = Auth::user();
 
             /*
              * 1. Verrouiller la vente.
@@ -659,14 +664,17 @@ public function update(Request $request, $saleId, $productId)
                 ->lockForUpdate()
                 ->findOrFail($saleId);
 
+
             /*
-             * 2. Vérifier que la vente n'est pas annulée.
+             * 2. Une vente annulée ne peut pas
+             * être modifiée.
              */
             if ($sale->annule_at) {
                 throw new \Exception(
                     'Cette vente a déjà été annulée et ne peut plus être modifiée.'
                 );
             }
+
 
             /*
              * 3. Vérifier les droits du vendeur.
@@ -681,223 +689,279 @@ public function update(Request $request, $saleId, $productId)
                 );
             }
 
-            /*
-             * 4. Récupérer la ligne précise
-             * du produit dans cette vente.
-             */
-            $saleProduct = $sale->products()
-                ->where('products.id', $productId)
-                ->first();
-
-            if (!$saleProduct) {
-                throw new \Exception(
-                    'Ce produit ne fait pas partie de cette vente.'
-                );
-            }
 
             /*
-             * 5. Anciennes valeurs de la vente.
+             * 4. Récupérer les produits réellement
+             * présents dans la vente.
              */
-            $oldQuantity = (int) (
-                $saleProduct->pivot->qty ?? 0
-            );
+            $existingProductIds = $sale->products
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->sort()
+                ->values()
+                ->all();
 
-            $oldUnitPrice = (float) (
-                $saleProduct->pivot->unit_price ?? 0
-            );
-
-            /*
-             * 6. Nouvelles valeurs.
-             */
-            $newQuantity = (int) $request->quantity;
-            $newUnitPrice = (float) $request->unit_price;
 
             /*
-             * 7. Verrouiller le produit.
+             * 5. Récupérer les produits envoyés
+             * par le formulaire.
              */
-            $product = Product::where(
-                'boutique_id',
-                $boutiqueId
+            $submittedProductIds = collect(
+                array_keys($request->input('items', []))
             )
-                ->where('id', $productId)
-                ->lockForUpdate()
-                ->firstOrFail();
+                ->map(fn ($id) => (string) $id)
+                ->sort()
+                ->values()
+                ->all();
+
 
             /*
-             * 8. Le prix de vente ne peut pas
-             * être inférieur au prix d'achat.
+             * IMPORTANT :
+             *
+             * Les deux listes doivent être identiques.
+             *
+             * Cela empêche quelqu'un d'ajouter
+             * un nouveau produit directement
+             * dans la requête HTTP.
              */
-            if (
-                $newUnitPrice <
-                (float) $product->purchase_price
-            ) {
+            if ($existingProductIds !== $submittedProductIds) {
                 throw new \Exception(
-                    "Le prix de vente de « {$product->name} » " .
-                    "ne peut pas être inférieur au prix d'achat (" .
-                    number_format(
-                        $product->purchase_price,
-                        0,
-                        ',',
-                        ' '
-                    ) .
-                    " FCFA)."
+                    'Les produits de cette vente ne peuvent pas être ajoutés ou supprimés depuis la modification.'
                 );
             }
 
-            /*
-             * 9. Stock réellement disponible
-             * pour cette modification.
-             *
-             * Exemple :
-             *
-             * Stock actuel = 5
-             * Ancienne vente = 3
-             *
-             * On peut considérer temporairement
-             * que le stock disponible est 8.
-             */
-            $availableStock =
-                $product->quantity +
-                $oldQuantity;
 
-            if ($newQuantity > $availableStock) {
-                throw new \Exception(
-                    "Stock insuffisant pour « {$product->name} ». " .
-                    "Stock disponible pour cette modification : " .
-                    "{$availableStock}, " .
-                    "quantité demandée : {$newQuantity}."
+            /*
+             * 6. Parcourir chaque produit existant
+             * dans la vente.
+             */
+            foreach ($sale->products as $saleProduct) {
+
+                $productId = (string) $saleProduct->id;
+
+                $item = $request->input(
+                    "items.{$productId}"
                 );
+
+
+                /*
+                 * Sécurité supplémentaire.
+                 */
+                if (!$item) {
+                    throw new \Exception(
+                        "Les informations du produit « {$saleProduct->name} » sont manquantes."
+                    );
+                }
+
+
+                /*
+                 * Anciennes valeurs.
+                 */
+                $oldQuantity = (int) (
+                    $saleProduct->pivot->qty ?? 0
+                );
+
+                $oldUnitPrice = (float) (
+                    $saleProduct->pivot->unit_price ?? 0
+                );
+
+
+                /*
+                 * Nouvelles valeurs.
+                 */
+                $newQuantity = (int) $item['quantity'];
+
+                $newUnitPrice = (float) $item['unit_price'];
+
+
+                /*
+                 * 7. Verrouiller le produit.
+                 */
+                $product = Product::where(
+                    'boutique_id',
+                    $boutiqueId
+                )
+                    ->where('id', $saleProduct->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+
+                /*
+                 * 8. Le prix de vente ne peut pas
+                 * être inférieur au prix d'achat.
+                 */
+                if (
+                    $newUnitPrice <
+                    (float) $product->purchase_price
+                ) {
+
+                    throw new \Exception(
+                        "Le prix de vente de « {$product->name} » " .
+                        "ne peut pas être inférieur au prix d'achat (" .
+                        number_format(
+                            $product->purchase_price,
+                            0,
+                            ',',
+                            ' '
+                        ) .
+                        " FCFA)."
+                    );
+                }
+
+
+                /*
+                 * 9. Stock réellement disponible
+                 * pour cette modification.
+                 *
+                 * On restitue temporairement
+                 * l'ancienne quantité vendue.
+                 *
+                 * Exemple :
+                 *
+                 * Stock actuel = 5
+                 * Ancienne vente = 3
+                 *
+                 * Stock disponible = 8
+                 */
+                $availableStock =
+                    (int) $product->quantity +
+                    $oldQuantity;
+
+
+                if ($newQuantity > $availableStock) {
+
+                    throw new \Exception(
+                        "Stock insuffisant pour « {$product->name} ». " .
+                        "Stock disponible pour cette modification : " .
+                        "{$availableStock}, " .
+                        "quantité demandée : {$newQuantity}."
+                    );
+                }
+
+
+                /*
+                 * 10. Ancien stock.
+                 */
+                $oldStock = (int) $product->quantity;
+
+
+                /*
+                 * 11. Nouveau stock.
+                 */
+                $newStock =
+                    $availableStock -
+                    $newQuantity;
+
+
+                /*
+                 * 12. Modifier le stock.
+                 */
+                $product->update([
+                    'quantity' => $newStock,
+
+                    'status' =>
+                        $newStock > 0
+                            ? 'disponible'
+                            : 'rupture',
+                ]);
+
+
+                /*
+                 * 13. Différence de quantité.
+                 */
+                $delta =
+                    $newQuantity -
+                    $oldQuantity;
+
+
+                /*
+                 * 14. Historique du mouvement
+                 * de stock.
+                 *
+                 * Une entrée est créée uniquement
+                 * si la quantité a changé.
+                 */
+                if ($delta !== 0) {
+
+                    StockMovement::create([
+                        'boutique_id' =>
+                            $boutiqueId,
+
+                        'product_id' =>
+                            $product->id,
+
+                        'user_id' =>
+                            $user->id,
+
+                        'type' =>
+                            'adjustment',
+
+                        'quantity' =>
+                            abs($delta),
+
+                        'old_stock' =>
+                            $oldStock,
+
+                        'new_stock' =>
+                            $newStock,
+
+                        'reason' =>
+                            'Modification de la vente #' .
+                            $sale->id,
+                    ]);
+                }
+
+
+                /*
+                 * 15. Modifier UNIQUEMENT la ligne
+                 * correspondante dans movement_products.
+                 *
+                 * Aucun sync().
+                 *
+                 * Aucun ajout.
+                 * Aucune suppression.
+                 */
+                DB::table('movement_products')
+                    ->where(
+                        'movement_id',
+                        $sale->id
+                    )
+                    ->where(
+                        'product_id',
+                        $product->id
+                    )
+                    ->update([
+                        'qty' =>
+                            $newQuantity,
+
+                        'unit_price' =>
+                            $newUnitPrice,
+
+                        'updated_at' =>
+                            now(),
+                    ]);
             }
 
-            /*
-             * 10. Calcul du nouveau stock.
-             */
-            $oldStock = (int) $product->quantity;
-
-            $newStock =
-                $availableStock -
-                $newQuantity;
 
             /*
-             * 11. Modifier le stock.
-             */
-            $product->update([
-                'quantity' => $newStock,
-
-                'status' =>
-                    $newStock > 0
-                        ? 'disponible'
-                        : 'rupture',
-            ]);
-
-            /*
-             * 12. Calcul de la différence.
+             * 16. Enregistrer l'utilisateur
+             * ayant effectué la modification.
              *
-             * Exemple :
-             * ancienne quantité = 5
-             * nouvelle quantité = 3
-             *
-             * delta = -2
-             * => 2 produits retournent au stock.
-             *
-             * Exemple :
-             * ancienne quantité = 5
-             * nouvelle quantité = 8
-             *
-             * delta = +3
-             * => 3 produits supplémentaires
-             * sont retirés du stock.
-             */
-            $delta =
-                $newQuantity -
-                $oldQuantity;
-
-            /*
-             * 13. Historique du mouvement de stock.
-             *
-             * On crée une entrée uniquement
-             * lorsque la quantité change.
-             */
-            if ($delta !== 0) {
-
-                StockMovement::create([
-                    'boutique_id' =>
-                        $boutiqueId,
-
-                    'product_id' =>
-                        $product->id,
-
-                    'user_id' =>
-                        $user->id,
-
-                    'type' =>
-                        'adjustment',
-
-                    'quantity' =>
-                        abs($delta),
-
-                    'old_stock' =>
-                        $oldStock,
-
-                    'new_stock' =>
-                        $newStock,
-
-                    'reason' =>
-                        'Modification de la vente #' .
-                        $sale->id,
-                ]);
-            }
-
-            /*
-             * 14. IMPORTANT :
-             *
-             * On modifie UNIQUEMENT cette ligne
-             * dans movement_products.
-             *
-             * Aucun sync().
-             *
-             * Les autres produits de la vente
-             * restent donc inchangés.
-             */
-            DB::table('movement_products')
-                ->where(
-                    'movement_id',
-                    $sale->id
-                )
-                ->where(
-                    'product_id',
-                    $product->id
-                )
-                ->update([
-                    'qty' =>
-                        $newQuantity,
-
-                    'unit_price' =>
-                        $newUnitPrice,
-
-                    'updated_at' =>
-                        now(),
-                ]);
-
-            /*
-             * 15. Enregistrer l'utilisateur
-             * qui a effectué la modification.
-             *
-             * user_id de la vente reste le créateur
-             * original.
+             * user_id reste l'utilisateur
+             * qui avait créé la vente.
              */
             $sale->update([
                 'updated_by' =>
                     $user->id,
             ]);
 
+
             /*
-             * 16. Recalculer le montant TOTAL
+             * 17. Recalculer le TOTAL COMPLET
              * de la vente.
              *
-             * On ne prend pas seulement le produit
-             * modifié : les autres lignes comptent
-             * toujours dans le total.
+             * Toutes les lignes sont prises
+             * en compte.
              */
             $newTotal = DB::table('movement_products')
                 ->where(
@@ -909,8 +973,10 @@ public function update(Request $request, $saleId, $productId)
                 )
                 ->value('total') ?? 0;
 
+
             /*
-             * 17. Mettre à jour la caisse.
+             * 18. Mettre à jour le mouvement
+             * de caisse correspondant.
              */
             $cashMovement = CashMovement::where(
                 'boutique_id',
@@ -923,6 +989,7 @@ public function update(Request $request, $saleId, $productId)
                 ->lockForUpdate()
                 ->first();
 
+
             if ($cashMovement) {
 
                 $cashMovement->update([
@@ -933,8 +1000,8 @@ public function update(Request $request, $saleId, $productId)
             } else {
 
                 /*
-                 * Sécurité pour une ancienne vente
-                 * qui n'aurait pas encore de mouvement
+                 * Sécurité pour les anciennes ventes
+                 * qui n'auraient pas de mouvement
                  * de caisse.
                  */
                 CashMovement::create([
@@ -967,21 +1034,27 @@ public function update(Request $request, $saleId, $productId)
             }
         });
 
+
     } catch (\Exception $e) {
 
         return back()
             ->withInput()
             ->withErrors([
-                'quantity' =>
+                'items' =>
                     $e->getMessage()
             ]);
     }
 
+
+    /*
+     * Après validation :
+     * retour vers la liste des ventes.
+     */
     return redirect()
         ->route('sales.index')
         ->with(
             'success',
-            'Le produit de la vente a été modifié avec succès. Le stock et la caisse ont été mis à jour.'
+            'La vente a été modifiée avec succès. Le stock et la caisse ont été mis à jour.'
         );
 }
 
