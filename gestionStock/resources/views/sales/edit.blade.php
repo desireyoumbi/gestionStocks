@@ -73,6 +73,7 @@
 
             {{-- Informations vente --}}
             <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
 
                     <div>
@@ -91,6 +92,7 @@
                     </div>
 
                 </div>
+
             </div>
 
 
@@ -100,21 +102,34 @@
                 @foreach($sale->products as $product)
 
                     @php
+                        /*
+                         * ID UNIQUE DE LA LIGNE movement_products
+                         *
+                         * Important :
+                         * on n'utilise plus $product->id ici.
+                         *
+                         * Cela permet d'avoir plusieurs fois le même
+                         * produit dans une même vente.
+                         */
+                        $lineId = $product->pivot->id;
+
                         $quantity = old(
-                            "items.{$product->id}.quantity",
+                            "items.{$lineId}.quantity",
                             $product->pivot->qty
                         );
 
                         $unitPrice = old(
-                            "items.{$product->id}.unit_price",
+                            "items.{$lineId}.unit_price",
                             $product->pivot->unit_price
                         );
 
                         $lineTotal = (float) $quantity * (float) $unitPrice;
                     @endphp
 
+
                     <div class="p-5 sale-item"
-                         data-product-id="{{ $product->id }}">
+                         data-product-id="{{ $product->id }}"
+                         data-line-id="{{ $lineId }}">
 
                         {{-- Produit --}}
                         <div class="flex flex-col lg:flex-row lg:items-center gap-5">
@@ -130,21 +145,29 @@
                                                 shrink-0">
 
                                         @if(!empty($product->image))
+
                                             <img src="{{ asset('storage/' . $product->image) }}"
                                                  alt="{{ $product->name }}"
                                                  class="w-11 h-11 rounded-xl object-cover">
+
                                         @else
+
                                             <svg class="w-5 h-5 text-gray-400"
                                                  fill="none"
                                                  viewBox="0 0 24 24"
                                                  stroke="currentColor"
                                                  stroke-width="2">
+
                                                 <path stroke-linecap="round"
                                                       stroke-linejoin="round"
                                                       d="M20 7l-8-4-8 4m16 0v10l-8 4m8-14l-8 4m0 0L4 7m8 4v10"/>
+
                                             </svg>
+
                                         @endif
+
                                     </div>
+
 
                                     <div class="min-w-0">
 
@@ -153,18 +176,25 @@
                                         </h2>
 
                                         @if($product->reference)
+
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 Réf. : {{ $product->reference }}
                                             </p>
+
                                         @endif
 
                                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+
                                             Prix d'achat :
+
                                             {{ number_format($product->purchase_price, 0, ',', ' ') }}
+
                                             FCFA
+
                                         </p>
 
                                     </div>
+
                                 </div>
 
                             </div>
@@ -173,16 +203,19 @@
                             {{-- Quantité --}}
                             <div class="w-full lg:w-32">
 
-                                <label for="quantity_{{ $product->id }}"
+                                <label for="quantity_{{ $lineId }}"
                                        class="block text-xs font-medium
                                               text-gray-500 dark:text-gray-400 mb-1.5">
+
                                     Quantité
+
                                 </label>
+
 
                                 <input
                                     type="number"
-                                    id="quantity_{{ $product->id }}"
-                                    name="items[{{ $product->id }}][quantity]"
+                                    id="quantity_{{ $lineId }}"
+                                    name="items[{{ $lineId }}][quantity]"
                                     value="{{ $quantity }}"
                                     min="1"
                                     max="2147483647"
@@ -202,18 +235,21 @@
                             {{-- Prix unitaire --}}
                             <div class="w-full lg:w-44">
 
-                                <label for="unit_price_{{ $product->id }}"
+                                <label for="unit_price_{{ $lineId }}"
                                        class="block text-xs font-medium
                                               text-gray-500 dark:text-gray-400 mb-1.5">
+
                                     Prix unitaire
+
                                 </label>
+
 
                                 <div class="relative">
 
                                     <input
                                         type="number"
-                                        id="unit_price_{{ $product->id }}"
-                                        name="items[{{ $product->id }}][unit_price]"
+                                        id="unit_price_{{ $lineId }}"
+                                        name="items[{{ $lineId }}][unit_price]"
                                         value="{{ $unitPrice }}"
                                         min="0"
                                         step="0.01"
@@ -229,7 +265,9 @@
 
                                     <span class="absolute right-3 top-1/2 -translate-y-1/2
                                                  text-xs text-gray-400">
+
                                         FCFA
+
                                     </span>
 
                                 </div>
@@ -245,7 +283,9 @@
                                 </p>
 
                                 <p class="line-total text-lg font-bold text-gray-900 dark:text-white">
+
                                     {{ number_format($lineTotal, 0, ',', ' ') }} FCFA
+
                                 </p>
 
                             </div>
@@ -267,6 +307,7 @@
                 <div class="flex items-center justify-between gap-4">
 
                     <div>
+
                         <p class="text-sm text-gray-500 dark:text-gray-400">
                             Total de la vente
                         </p>
@@ -274,11 +315,15 @@
                         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             Le total sera recalculé automatiquement.
                         </p>
+
                     </div>
+
 
                     <p id="grand-total"
                        class="text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
+
                         0 FCFA
+
                     </p>
 
                 </div>
@@ -301,6 +346,7 @@
                           transition">
 
                     Annuler
+
                 </a>
 
 
@@ -316,12 +362,15 @@
                          viewBox="0 0 24 24"
                          stroke="currentColor"
                          stroke-width="2">
+
                         <path stroke-linecap="round"
                               stroke-linejoin="round"
                               d="M5 13l4 4L19 7"/>
+
                     </svg>
 
                     Enregistrer les modifications
+
                 </button>
 
             </div>
@@ -339,13 +388,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const items = document.querySelectorAll('.sale-item');
     const grandTotal = document.getElementById('grand-total');
 
+
     function formatNumber(number) {
+
         return new Intl.NumberFormat('fr-FR').format(number);
+
     }
+
 
     function updateTotals() {
 
         let total = 0;
+
 
         items.forEach(function (item) {
 
@@ -353,19 +407,26 @@ document.addEventListener('DOMContentLoaded', function () {
             const priceInput = item.querySelector('.sale-price');
             const lineTotalElement = item.querySelector('.line-total');
 
+
             const quantity = parseFloat(quantityInput.value) || 0;
             const price = parseFloat(priceInput.value) || 0;
 
+
             const lineTotal = quantity * price;
+
 
             total += lineTotal;
 
+
             lineTotalElement.textContent =
                 formatNumber(lineTotal) + ' FCFA';
+
         });
+
 
         grandTotal.textContent =
             formatNumber(total) + ' FCFA';
+
     }
 
 
@@ -373,6 +434,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const quantityInput = item.querySelector('.sale-quantity');
         const priceInput = item.querySelector('.sale-price');
+
 
         quantityInput.addEventListener('input', updateTotals);
         priceInput.addEventListener('input', updateTotals);
@@ -384,4 +446,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
+
 @endsection

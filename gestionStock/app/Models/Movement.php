@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -52,13 +53,13 @@ class Movement extends Model
     public function products()
     {
         return $this->belongsToMany(Product::class, 'movement_products')
-                    ->withPivot('qty','unit_price')
-                    ->withTimestamps();
+            ->withPivot('id', 'qty', 'unit_price')
+            ->withTimestamps();
     }
 
     // relation avec reservation 
     public function reservation(): BelongsTo
-{
-    return $this->belongsTo(Reservation::class);
-}
+    {
+        return $this->belongsTo(Reservation::class);
+    }
 }
