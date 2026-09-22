@@ -129,6 +129,11 @@ Route::middleware(['auth', 'check.password'])->group(function () {
     Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
     Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
     Route::delete('/sales/{id}', [SaleController::class, 'destroy'])->name('sales.destroy');
+    Route::get('/sales/{id}/edit', [SaleController::class, 'edit'])
+        ->name('sales.edit');
+
+    Route::put('/sales/{id}', [SaleController::class, 'update'])
+        ->name('sales.update');
     // Page dédiée aux Approvisionnements
     Route::get('/supplies/create', [SupplyController::class, 'create'])->name('supplies.create');
     Route::post('/supplies', [SupplyController::class, 'store'])->name('supplies.store');
@@ -226,7 +231,7 @@ Route::post('/mot-de-passe-oublie', [PasswordRecoveryController::class, 'findAcc
 Route::post('/mot-de-passe-oublie/confirmer/{user}', [PasswordRecoveryController::class, 'confirmAccount'])
     ->name('password.confirm-account');
 
-    // ============================================
+// ============================================
 // RÉCUPÉRATION DU CODE DE CONNEXION (à ajouter dans routes/web.php)
 // ============================================
 
@@ -257,4 +262,4 @@ Route::middleware(['platform_admin'])->prefix('platform-admin')->name('platform-
     // NOUVEAU
     Route::get('/boutiques/{boutique}', [PlatformAdminController::class, 'show'])->name('boutiques.show');
     Route::post('/users/{user}/reinitialiser-mot-de-passe', [PlatformAdminController::class, 'reinitialiserMotDePasse'])->name('users.reinitialiser-mot-de-passe');
-});    
+});
