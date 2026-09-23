@@ -121,16 +121,16 @@ class ProductController extends Controller
             ],
 
             'purchase_price' =>
-                'required|numeric|min:0.01|max:999999999999999999.99',
+            'required|numeric|min:0.01|max:999999999999999999.99',
 
             'selling_price' =>
-                'required|numeric|min:0|max:999999999999999999.99|gte:purchase_price',
+            'required|numeric|min:0|max:999999999999999999.99|gte:purchase_price',
 
             'quantity' =>
-                'required|integer|min:0|max:2147483647',
+            'required|integer|min:0|max:2147483647',
 
             'alert_threshold' =>
-                'required|integer|min:5|max:2147483647',
+            'required|integer|min:5|max:2147483647',
 
             'category_id' => [
                 'required',
@@ -141,28 +141,28 @@ class ProductController extends Controller
             ],
 
             'description' =>
-                'nullable|string|max:1000',
+            'nullable|string|max:1000',
 
             'image' =>
-                'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ], [
             'reference.unique' =>
-                'Cette référence existe déjà pour cette boutique.',
+            'Cette référence existe déjà pour cette boutique.',
 
             'purchase_price.min' =>
-                'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
+            'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
 
             'selling_price.gte' =>
-                'Le prix de vente ne peut pas être inférieur au prix d\'achat.',
+            'Le prix de vente ne peut pas être inférieur au prix d\'achat.',
 
             'alert_threshold.min' =>
-                'Le seuil d\'alerte ne peut pas être inférieur à 5.',
+            'Le seuil d\'alerte ne peut pas être inférieur à 5.',
 
             'image.image' =>
-                'Le fichier doit être une image.',
+            'Le fichier doit être une image.',
 
             'image.max' =>
-                'L\'image ne doit pas dépasser 2 Mo.',
+            'L\'image ne doit pas dépasser 2 Mo.',
         ]);
 
         return DB::transaction(function () use ($request, $validated) {
@@ -181,7 +181,7 @@ class ProductController extends Controller
                         ->withInput()
                         ->withErrors([
                             'reference' =>
-                                'Un produit avec cette référence vient d\'être créé par un autre utilisateur.'
+                            'Un produit avec cette référence vient d\'être créé par un autre utilisateur.'
                         ]);
                 }
             }
@@ -288,13 +288,13 @@ class ProductController extends Controller
             ],
 
             'selling_price' =>
-                'required|numeric|min:0|max:999999999999999999.99',
+            'required|numeric|min:0|max:999999999999999999.99',
 
             'quantity' =>
-                'required|integer|min:0|max:2147483647',
+            'required|integer|min:0|max:2147483647',
 
             'alert_threshold' =>
-                'required|integer|min:5|max:2147483647',
+            'required|integer|min:5|max:2147483647',
 
             'category_id' => [
                 'required',
@@ -305,7 +305,7 @@ class ProductController extends Controller
             ],
 
             'image' =>
-                'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ];
 
         if (in_array(
@@ -319,10 +319,10 @@ class ProductController extends Controller
 
         $validated = $request->validate($rules, [
             'purchase_price.min' =>
-                'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
+            'Le prix d\'achat ne peut pas être égal à 0 ou négatif.',
 
             'alert_threshold.min' =>
-                'Le seuil d\'alerte ne peut pas être inférieur à 5.',
+            'Le seuil d\'alerte ne peut pas être inférieur à 5.',
         ]);
 
         if (Auth::user()->role === 'vendeur') {
@@ -380,7 +380,7 @@ class ProductController extends Controller
                     'old_stock'   => $oldStock,
                     'new_stock'   => $newStock,
                     'reason'      =>
-                        'Modification manuelle depuis la modification du produit',
+                    'Modification manuelle depuis la modification du produit',
                 ]);
             }
 
@@ -424,8 +424,24 @@ class ProductController extends Controller
             Storage::disk('public')->delete($product->image);
         }
 
-        $product->delete();
 
+
+        // verifier que le produit apparait dans un movement de la db si oui on refuse la suppression
+        $movementAssocie = DB::table('movement_products')
+            ->where('product_id', $product->id)
+            ->exists();
+
+        if ($movementAssocie) {
+            abort(
+                403,
+                "Impossible de supprimer ce produit car il est associé à un mouvement."
+            );
+        }
+
+        // si tout ces bien passe alors on peut bien supprimer le produit
+        $product->delete();
+        
+        // redirection du users vers la page index 
         return redirect()
             ->route('products.index')
             ->with('success', 'Produit supprimé avec succès.');

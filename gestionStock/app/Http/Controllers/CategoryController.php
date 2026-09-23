@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -22,7 +23,7 @@ class CategoryController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('description', 'LIKE', "%{$search}%");
+                    ->orWhere('description', 'LIKE', "%{$search}%");
             });
         }
 
@@ -77,7 +78,7 @@ class CategoryController extends Controller
         ]);
 
         return redirect()->route('categories.index')
-                         ->with('success', 'Catégorie créée avec succès.');
+            ->with('success', 'Catégorie créée avec succès.');
     }
 
     /**
@@ -148,7 +149,7 @@ class CategoryController extends Controller
         ]);
 
         return redirect()->route('categories.index')
-                         ->with('success', 'Catégorie mise à jour avec succès.');
+            ->with('success', 'Catégorie mise à jour avec succès.');
     }
 
     /**
@@ -172,9 +173,20 @@ class CategoryController extends Controller
             );
         }
 
+        // Vérifier si la catégorie possède des produits associés
+        $produitAssocier = Product::where('category_id', $category->id)->exists();
+
+        if ($produitAssocier) {
+            abort(
+                403,
+                "Impossible de supprimer cette catégorie car elle possède des produits associés."
+            );
+        }
+
+
         $category->delete();
 
         return redirect()->route('categories.index')
-                         ->with('success', 'Catégorie supprimée avec succès.');
+            ->with('success', 'Catégorie supprimée avec succès.');
     }
 }
