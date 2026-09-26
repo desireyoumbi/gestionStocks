@@ -733,6 +733,59 @@
 </div>
 
 
+<!-- ================= MODALE INSTALLATION iOS ================= -->
+
+<div
+    id="ios-install-modal"
+    class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4"
+>
+
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
+
+        <h3 class="text-lg font-bold text-slate-900 mb-4">
+            Installer E-Stockly
+        </h3>
+
+        <div class="space-y-4 text-sm text-slate-700">
+
+            <div class="flex items-start gap-3">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-xs">1</span>
+                <p>
+                    Touchez l'icône
+                    <span class="inline-flex items-center justify-center w-6 h-6 border border-slate-300 rounded-md mx-1 align-middle">⬆️</span>
+                    <strong>Partager</strong> en bas de Safari
+                </p>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-xs">2</span>
+                <p>
+                    Faites défiler et choisissez
+                    <strong>« Sur l'écran d'accueil »</strong>
+                </p>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-xs">3</span>
+                <p>
+                    Confirmez en touchant
+                    <strong>« Ajouter »</strong> en haut à droite
+                </p>
+            </div>
+
+        </div>
+
+        <button
+            onclick="document.getElementById('ios-install-modal').classList.add('hidden')"
+            class="w-full mt-6 py-2.5 rounded-lg bg-slate-900 text-white font-semibold text-sm"
+        >
+            Compris
+        </button>
+
+    </div>
+
+</div>
+
 
 <!-- ================= GESTION INSTALLATION PWA ================= -->
 
@@ -741,6 +794,22 @@
     (function () {
 
         let deferredPrompt = null;
+
+
+        /*
+         * Détecte si l'appareil est un iPhone / iPad.
+         * Safari iOS ne déclenche jamais "beforeinstallprompt",
+         * il faut donc lui proposer une installation manuelle.
+         */
+
+        function isIOS() {
+
+            return (
+                /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+                !window.MSStream
+            );
+
+        }
 
 
         /*
@@ -804,6 +873,7 @@
 
         /*
          * Capture l'événement du navigateur qui propose l'installation.
+         * N'existe que sur Chrome/Edge/Android — jamais sur Safari iOS.
          * Sans ce bloc, deferredPrompt reste toujours vide,
          * d'où l'erreur "installPwaApp is not defined" ou
          * "installation non disponible" au clic.
@@ -818,10 +888,35 @@
 
 
         /*
+         * Affiche la modale d'instructions manuelles pour iOS.
+         */
+
+        function showIosInstallInstructions() {
+
+            const modal =
+                document.getElementById('ios-install-modal');
+
+            if (modal) {
+
+                modal.classList.remove('hidden');
+
+            }
+
+        }
+
+
+        /*
          * Fonction appelée par le clic sur les boutons "Installer".
          */
 
         async function triggerInstall() {
+
+            if (isIOS()) {
+
+                showIosInstallInstructions();
+                return;
+
+            }
 
             if (!deferredPrompt) {
 
